@@ -13,10 +13,11 @@ export default async function Home() {
         <ul>
           {orders.map((order) => (
             <li key={order.orderId}>
+              <p>orderId: {order.orderId}</p>
+
               <Suspense fallback={<p>Loading feed...</p>}>
                 <Order ordId={order.orderId} />
               </Suspense>
-              <p>orderId: {order.orderId}</p>
             </li>
           ))}
         </ul>
