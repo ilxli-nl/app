@@ -10,9 +10,14 @@
   },
   "dependencies": {
     "@std/async": "npm:@jsr/std__async@^1.0.9",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.474.0",
     "next": "^15.2.0-canary.25",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "drizzle-kit": "^0.30.1",
