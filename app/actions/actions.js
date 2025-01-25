@@ -1,8 +1,8 @@
-'use server';
+'use server'
 //import { unstable_cacheLife as cacheLife } from 'next/cache';
 
 export const Token = async () => {
-  const accountData = { account: 'NL' };
+  const accountData = { account: 'NL' }
 
   const response = await fetch('https://ampx.nl/token.php', {
     method: 'POST',
@@ -11,17 +11,17 @@ export const Token = async () => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(accountData),
-  });
+  })
 
-  const result = await response.json();
+  const result = await response.json()
 
   //console.log(result);
 
-  return result;
-};
+  return result
+}
 
 export const Orders = async (page) => {
-  const token = await Token();
+  const token = await Token()
   const response = await fetch(
     `${process.env.BOLAPI}retailer/orders`, //?page=${page}
     {
@@ -36,27 +36,27 @@ export const Orders = async (page) => {
         Authorization: 'Bearer ' + token,
       },
     }
-  );
+  )
   // if (!response.ok) {
   //   throw new Error('Failed to fetch orders');
   // }
 
-  const p = await response.json();
+  const p = await response.json()
 
-  const ordersall = await p.orders;
+  const ordersall = await p.orders
 
-  return ordersall;
-};
+  return ordersall
+}
 
 export const OrderBol = async (odrId) => {
-  const token = await Token();
+  const token = await Token()
 
   const response = await fetch(
     `${process.env.BOLAPI}retailer/orders/${odrId}`, //?page=${page}${odrId}
     {
       cache: 'force-cache',
       next: {
-        revalidate: 10,
+        revalidate: 600,
       },
       method: 'GET',
       headers: {
@@ -64,27 +64,27 @@ export const OrderBol = async (odrId) => {
         Authorization: 'Bearer ' + token,
       },
     }
-  );
-  const order = await response.json();
+  )
+  const order = await response.json()
 
   //setTimeout(() => {
   if (!response.ok) {
     //throw new Error('Failed to fetch order');
-    return 'not Loading';
+    return 'not Loading'
   }
-  return order;
+  return order
   //}, 1000);
-};
+}
 
 export const OrderImg = async (ean) => {
-  const token = await Token();
+  const token = await Token()
 
   const response = await fetch(
     `${process.env.BOLAPI}retailer/products/${ean}/assets`, //?page=${page}${odrId}
     {
       cache: 'force-cache',
       next: {
-        revalidate: 20,
+        revalidate: 600,
       },
       method: 'GET',
       headers: {
@@ -92,16 +92,16 @@ export const OrderImg = async (ean) => {
         Authorization: 'Bearer ' + token,
       },
     }
-  );
+  )
 
   if (!response.ok) {
     // throw new Error('Failed to fetch order');
-    return 'https://stackoverflow.com/';
+    return 'https://stackoverflow.com/'
   }
 
-  const images = await response.json();
+  const images = await response.json()
 
-  console.log(images);
+  console.log(images)
 
-  return images.assets[0].variants[0].url;
-};
+  return images.assets[0].variants[0].url
+}
