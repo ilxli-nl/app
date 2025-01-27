@@ -19,28 +19,42 @@ async function Order({ ordId }) {
   return (
     <div key={odr.orderId}>
       <div>
-        <Suspense fallback={<p>Loading feed...</p>}>
-          <Card>
-            <CardHeader>
-              <CardTitle>
+        <Card key={odr.orderId}>
+          <CardHeader>
+            <CardTitle className='flex justify-between'>
+              <div>
                 <h1 className='text-2xl'>{odr.orderId}</h1>
-              </CardTitle>
-            </CardHeader>
+              </div>
+              <div>
+                <h1 className='text-5xl'>NL</h1>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <Suspense fallback={<p>Loading feed...</p>}>
             {odrItm.map((item) => (
               <>
                 <CardContent>
                   <div className='flex items-center'>
-                    <div
-                      className={`flex w-410  ${
+                    <figure
+                      className={` ${
                         item.fulfilment.distributionParty == 'BOL'
                           ? 'bg-sky-500'
                           : 'bg-orange-500'
-                      }  p-3  item-center`}
+                      }  p-3 `}
                     >
-                      <Imagebol ean={item.product.ean} />
-                      <h2>{item.fulfilment.latestDeliveryDate}</h2>
-                    </div>
-                    <div>{item.fulfilment.latestDeliveryDate}</div>
+                      <Imagebol className='h-auto' ean={item.product.ean} />
+                      <figcaption
+                        className={`mt-2 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
+                          item.fulfilment.latestDeliveryDate ??
+                          `bg-red-400 rounded-md`
+                        }`}
+                      >
+                        {item.fulfilment.exactDeliveryDate
+                          ? `Exact: ${item.fulfilment.exactDeliveryDate}`
+                          : item.fulfilment.latestDeliveryDate}
+                      </figcaption>
+                    </figure>
+
                     <div className='w-2/3'>
                       <CardTitle className='flex items-center'>
                         <h1 className='w-4/5 p-5'>
@@ -53,16 +67,29 @@ async function Order({ ordId }) {
                         </h1>
                       </CardTitle>
                       <CardDescription>
-                        <h1>test: {odr.shipmentDetails.firstName}</h1>
+                        <h1>
+                          {odr.shipmentDetails.firstName}{' '}
+                          {odr.shipmentDetails.surname}
+                        </h1>
+                        <p>
+                          {odr.shipmentDetails.streetName}{' '}
+                          {odr.shipmentDetails.houseNumber}{' '}
+                          {odr.shipmentDetails.houseNumberExtension}
+                        </p>
+                        <p>
+                          {odr.shipmentDetails.zipCode}{' '}
+                          {odr.shipmentDetails.city}{' '}
+                          {odr.shipmentDetails.houseNumberExtension}
+                        </p>
                       </CardDescription>
                     </div>
                   </div>
                 </CardContent>
               </>
             ))}
-            <CardFooter></CardFooter>
-          </Card>
-        </Suspense>
+          </Suspense>
+          <CardFooter></CardFooter>
+        </Card>
       </div>
     </div>
   )

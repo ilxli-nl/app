@@ -47,7 +47,7 @@ export const Orders = async (page) => {
 
   return ordersall
 }
-
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 export const OrderBol = async (odrId) => {
   const token = await Token()
 
@@ -66,11 +66,11 @@ export const OrderBol = async (odrId) => {
     }
   )
   const order = await response.json()
-
+  await sleep(1000)
   //setTimeout(() => {
   if (!response.ok) {
     //throw new Error('Failed to fetch order');
-    return 'not Loading'
+    return {}
   }
   return order
   //}, 1000);
