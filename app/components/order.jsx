@@ -26,7 +26,7 @@ async function Order({ ordId }) {
                 <h1 className='text-2xl'>{odr.orderId}</h1>
               </div>
               <div>
-                <h1 className='text-5xl'>NL</h1>
+                <h2 className='text-5xl'>NL</h2>
               </div>
             </CardTitle>
           </CardHeader>
