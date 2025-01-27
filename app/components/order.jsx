@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { OrderBol, OrderImg } from '../actions/actions'
+import { OrderBol } from '../actions/actions'
 import Imagebol from '../components/image'
 import {
   Card,
@@ -14,7 +14,7 @@ async function Order({ ordId }) {
   const odr = await OrderBol(ordId)
 
   const odrItm = odr.orderItems
-  console.log(odr)
+  console.log(JSON.stringify(odr, null, '  '))
 
   return (
     <div key={odr.orderId}>
@@ -30,18 +30,29 @@ async function Order({ ordId }) {
               <>
                 <CardContent>
                   <div className='flex items-center'>
-                    <div className='w-1/3'>
+                    <div
+                      className={`flex w-1/3  ${
+                        item.fulfilment.distributionParty == 'BOL'
+                          ? 'bg-sky-500'
+                          : 'bg-orange-500'
+                      }  p-3  object-center`}
+                    >
                       <Imagebol ean={item.product.ean} />
                     </div>
+                    <div>{item.fulfilment.latestDeliveryDate}</div>
                     <div className='w-2/3'>
                       <CardTitle className='flex items-center'>
-                        <h1 className='w-4/5 p-5'>{item.product.title}</h1>
+                        <h1 className='w-4/5 p-5'>
+                          {item.product.title} <br />
+                          <br />
+                          <p>EAN {item.product.ean}</p>
+                        </h1>
                         <h1 className='text-9xl w-1/5 p-5 bg-sky-500/100 text-center'>
                           {item.quantity}
                         </h1>
                       </CardTitle>
                       <CardDescription>
-                        <h1>test: {item.product.ean}</h1>
+                        <h1>test: {odr.shipmentDetails.firstName}</h1>
                       </CardDescription>
                     </div>
                   </div>

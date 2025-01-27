@@ -27,7 +27,7 @@ export const Orders = async (page) => {
     {
       cache: 'force-cache',
       next: {
-        revalidate: 200,
+        revalidate: 3600,
       },
       method: 'GET',
       cache: 'no-store',
@@ -56,7 +56,7 @@ export const OrderBol = async (odrId) => {
     {
       cache: 'force-cache',
       next: {
-        revalidate: 600,
+        revalidate: 3600,
       },
       method: 'GET',
       headers: {
@@ -84,7 +84,7 @@ export const OrderImg = async (ean) => {
     {
       cache: 'force-cache',
       next: {
-        revalidate: 600,
+        revalidate: 9000,
       },
       method: 'GET',
       headers: {
@@ -101,7 +101,7 @@ export const OrderImg = async (ean) => {
 
   const images = await response.json()
 
-  console.log(images)
+  //console.log(JSON.stringify(images, null, '  '))
 
-  return images.assets[0].variants[0].url
+  return images.assets[0].variants[1].url
 }
