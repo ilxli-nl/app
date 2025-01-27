@@ -31,13 +31,14 @@ async function Order({ ordId }) {
                 <CardContent>
                   <div className='flex items-center'>
                     <div
-                      className={`flex w-1/3  ${
+                      className={`flex w-410  ${
                         item.fulfilment.distributionParty == 'BOL'
                           ? 'bg-sky-500'
                           : 'bg-orange-500'
-                      }  p-3  object-center`}
+                      }  p-3  item-center`}
                     >
                       <Imagebol ean={item.product.ean} />
+                      <h2>{item.fulfilment.latestDeliveryDate}</h2>
                     </div>
                     <div>{item.fulfilment.latestDeliveryDate}</div>
                     <div className='w-2/3'>

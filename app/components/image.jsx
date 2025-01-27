@@ -10,8 +10,8 @@ async function Imagebol({ ean }) {
       <Image
         styles='height:auto; object-center'
         src={imgs}
-        width={300}
-        height={300}
+        width={400}
+        height={400}
         alt='Picture of the author'
       />
     </Suspense>
