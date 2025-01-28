@@ -30,7 +30,7 @@ async function Order({ ordId }) {
               </div>
             </CardTitle>
           </CardHeader>
-          <Suspense fallback={<p>Loading feed...</p>}>
+          <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}>
             {odrItm.map((item) => (
               <>
                 <CardContent>
@@ -40,7 +40,7 @@ async function Order({ ordId }) {
                         item.fulfilment.distributionParty == 'BOL'
                           ? 'bg-sky-500'
                           : 'bg-orange-500'
-                      }  p-3 `}
+                      }  p-3 rounded-md`}
                     >
                       <Imagebol className='h-auto' ean={item.product.ean} />
                       <figcaption
@@ -62,7 +62,7 @@ async function Order({ ordId }) {
                           <br />
                           <p>EAN {item.product.ean}</p>
                         </h1>
-                        <h1 className='text-9xl w-1/5 p-5 bg-sky-500/100 text-center'>
+                        <h1 className='text-9xl w-1/5 p-5 bg-sky-500/100 text-center rounded-md'>
                           {item.quantity}
                         </h1>
                       </CardTitle>
