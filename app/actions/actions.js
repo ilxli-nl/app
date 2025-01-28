@@ -68,7 +68,7 @@ export const OrderBol = async (odrId) => {
     }
   );
   const order = await response.json();
-  await sleep(1000);
+  await sleep(500);
   if (!response.ok) {
     return {};
   }
@@ -95,11 +95,11 @@ export const OrderImg = async (ean) => {
 
   if (!response.ok) {
     // throw new Error('Failed to fetch order');
-    return './no_image.jpg';
+    return '/no_image.jpg';
   }
 
   const images = await response.json();
-  await sleep(1000);
+  await sleep(500);
   //console.log(JSON.stringify(images, null, '  '))
 
   return images.assets[0].variants[1].url;

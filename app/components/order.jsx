@@ -9,12 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-
+ // const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function Order({ ordId }) {
+
+
   const odr = await OrderBol(ordId)
 
-  const odrItm = odr.orderItems
-  console.log(JSON.stringify(odr, null, '  '))
+  const odrItm = await odr.orderItems
+//await sleep(5000);  
+  //console.log(JSON.stringify(odr, null, '  '))
 
   return (
     <div key={odr.orderId}>
@@ -31,7 +34,7 @@ async function Order({ ordId }) {
             </CardTitle>
           </CardHeader>
           <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}>
-            {odrItm.map((item) => (
+            {odrItm?.map((item) => (
               <>
                 <CardContent>
                   <div className='flex items-center'>
