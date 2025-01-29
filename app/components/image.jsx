@@ -13,6 +13,7 @@ async function Imagebol({ ean }) {
         width={400}
         height={400}
         alt='Picture of the author'
+        style={{ width: '400', height: 'auto' }}
       />
     </Suspense>
   )
