@@ -1,33 +1,16 @@
 'use client'
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { FaGoogle } from 'react-icons/fa'
 import logo from '@/assets/images/logo-white.png'
-import profileDefault from '@/assets/images/profile.png'
-import { signIn, signOut, getProviders } from 'next-auth/react'
+import { login, logout } from '@/lib/actions/auth'
 
-const Navbar = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
-  const [providers, setProviders] = useState(null)
+const Navbar =  () => {
+
 
   const pathname = usePathname()
 
-  useEffect(() => {
-    const setAuthProviders = async () => {
-      const res = await getProviders()
-      setProviders(res)
-    }
-
-    setAuthProviders()
-
-    // NOTE: close mobile menu if the viewport size is changed
-    window.addEventListener('resize', () => {
-      setIsMobileMenuOpen(false)
-    })
-  }, [])
 
   return (
     <nav className='bg-blue-700 border-b border-blue-500'>
@@ -83,13 +66,18 @@ const Navbar = () => {
                   Home
                 </Link>
                 <Link
-                  href='/properties'
+                  href='/user-info'
                   className={`${
                     pathname === '/properties' ? 'bg-black' : ''
                   } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
                 >
-                  Properties
+                  User Info
                 </Link>
+
+                <button onClick={() => login()}> Sign in</button>
+                
+                <button onClick={() => logout()}> Sign out</button>
+                
 
                 <Link
                   href='/properties/add'
@@ -100,24 +88,6 @@ const Navbar = () => {
                   Add Property
                 </Link>
               </div>
-            </div>
-          </div>
-
-          {/* <!-- Right Side Menu (Logged Out) --> */}
-
-          <div className='hidden md:block md:ml-6'>
-            <div className='flex items-center'>
-              {providers &&
-                Object.values(providers).map((provider) => (
-                  <button
-                    key={provider.name}
-                    onClick={() => signIn(provider.id)}
-                    className='flex items-center text-white bg-gray-700 hover:bg-gray-900 hover:text-white rounded-md px-3 py-2 my-3'
-                  >
-                    <FaGoogle className='text-white mr-2' />
-                    <span>Login or Register</span>
-                  </button>
-                ))}
             </div>
           </div>
 
@@ -162,107 +132,11 @@ const Navbar = () => {
                   <span className='sr-only'>Open user menu</span>
                 </button>
               </div>
-
-              {/* <!-- Profile dropdown --> */}
-              {isProfileMenuOpen && (
-                <div
-                  id='user-menu'
-                  className='absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none'
-                  role='menu'
-                  aria-orientation='vertical'
-                  aria-labelledby='user-menu-button'
-                  tabIndex='-1'
-                >
-                  <Link
-                    href='/profile'
-                    className='block px-4 py-2 text-sm text-gray-700'
-                    role='menuitem'
-                    tabIndex='-1'
-                    id='user-menu-item-0'
-                    onClick={() => {
-                      setIsProfileMenuOpen(false)
-                    }}
-                  >
-                    Your Profile
-                  </Link>
-                  <Link
-                    href='/properties/saved'
-                    className='block px-4 py-2 text-sm text-gray-700'
-                    role='menuitem'
-                    tabIndex='-1'
-                    id='user-menu-item-2'
-                    onClick={() => {
-                      setIsProfileMenuOpen(false)
-                    }}
-                  >
-                    Saved Properties
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setIsProfileMenuOpen(false)
-                      signOut({ callbackUrl: '/' })
-                    }}
-                    className='block px-4 py-2 text-sm text-gray-700'
-                    role='menuitem'
-                    tabIndex='-1'
-                    id='user-menu-item-2'
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </div>
       </div>
       {/* <!-- Mobile menu, show/hide based on menu state. --> */}
-      {isMobileMenuOpen && (
-        <div id='mobile-menu'>
-          <div className='space-y-1 px-2 pb-3 pt-2'>
-            <Link
-              href='/'
-              className={`${
-                pathname === '/' ? 'bg-black' : ''
-              } text-white block rounded-md px-3 py-2 text-base font-medium`}
-            >
-              Home
-            </Link>
-            <Link
-              href='/properties'
-              className={`${
-                pathname === '/properties' ? 'bg-black' : ''
-              } text-white block rounded-md px-3 py-2 text-base font-medium`}
-            >
-              Properties
-            </Link>
-
-            <Link
-              href='/properties/add'
-              className={`${
-                pathname === '/properties/add' ? 'bg-black' : ''
-              } text-white block rounded-md px-3 py-2 text-base font-medium`}
-            >
-              Add Property
-            </Link>
-
-            <div className='block md:ml-6'>
-              <div className='flex items-center'>
-                {providers &&
-                  Object.values(providers).map((provider) => (
-                    <button
-                      key={provider.name}
-                      onClick={() => signIn(provider.id)}
-                      className='flex items-center text-white bg-gray-700 hover:bg-gray-900 hover:text-white rounded-md px-3 py-2 my-3'
-                    >
-                      <FaGoogle className='text-white mr-2' />
-                      <span>Login or Register</span>
-                    </button>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </nav>
   )
 }
