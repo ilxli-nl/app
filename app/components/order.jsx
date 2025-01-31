@@ -12,11 +12,10 @@ import {
  // const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function Order({ ordId }) {
 
-
   const odr = await OrderBol(ordId)
 
   const odrItm = await odr.orderItems
-//await sleep(5000);  
+
   //console.log(JSON.stringify(odr, null, '  '))
 
   return (
@@ -36,8 +35,9 @@ async function Order({ ordId }) {
           <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}>
             {odrItm?.map((item) => (
               <>
-                <CardContent>
+                <CardContent className={(item.quantity >= 2) ? "border-8 border-red-700 pt-5" : ""}>
                   <div className='flex items-center'>
+            
                     <figure
                       className={` ${
                         item.fulfilment.distributionParty == 'BOL'
@@ -91,7 +91,12 @@ async function Order({ ordId }) {
               </>
             ))}
           </Suspense>
-          <CardFooter></CardFooter>
+          <CardFooter>
+         <h1>test</h1>
+
+
+
+       </CardFooter>
         </Card>
       </div>
     </div>

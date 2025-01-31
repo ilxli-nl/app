@@ -104,3 +104,26 @@ export const OrderImg = async (ean) => {
 
   return images.assets[0].variants[1].url;
 };
+
+export const Label = async () => {
+  const response = await fetch(
+    `https://ampx.nl/test.php`, //?page=${page}${odrId}
+    {
+      cache: 'no-cache',
+
+      method: 'POST',
+      headers: {},
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch order');
+  }
+
+  //const html = await response.json();
+  const html = response;
+
+  //console.log(JSON.stringify(images, null, '  '))
+
+  return html;
+};
