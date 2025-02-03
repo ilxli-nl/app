@@ -1,6 +1,8 @@
-import { Suspense } from 'react'
+import { Suspense, React  } from 'react'
 import { OrderBol } from '../actions/actions'
 import Imagebol from '../components/image'
+import {ReactPDF, Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+
 import {
   Card,
   CardContent,
@@ -11,6 +13,21 @@ import {
 } from '@/components/ui/card'
  // const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function Order({ ordId }) {
+
+  const MyDocument = () => (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <View style={styles.section}>
+          <Text>Section #1</Text>
+        </View>
+        <View style={styles.section}>
+          <Text>Section #2</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+
+  const stream = await renderToStream(<MyDocument />);
 
   const odr = await OrderBol(ordId)
 
@@ -94,7 +111,10 @@ async function Order({ ordId }) {
           <CardFooter>
          <h1>test</h1>
 
-
+         <div>
+          {stream}
+         
+  </div>
 
        </CardFooter>
         </Card>
