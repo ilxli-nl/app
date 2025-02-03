@@ -1,4 +1,4 @@
-import { Suspense, React  } from 'react'
+import { Suspense, React } from 'react'
 import { OrderBol } from '../actions/actions'
 import Imagebol from '../components/image'
 import Link from 'next/link'
@@ -13,11 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 
-
-
 async function Order({ ordId }) {
-
-
   const odr = await OrderBol(ordId)
 
   const odrItm = await odr.orderItems
@@ -41,9 +37,12 @@ async function Order({ ordId }) {
           <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}>
             {odrItm?.map((item) => (
               <>
-                <CardContent className={(item.quantity >= 2) ? "border-8 border-red-700 pt-5" : ""}>
+                <CardContent
+                  className={
+                    item.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''
+                  }
+                >
                   <div className='flex items-center'>
-            
                     <figure
                       className={` ${
                         item.fulfilment.distributionParty == 'BOL'
@@ -98,15 +97,10 @@ async function Order({ ordId }) {
             ))}
           </Suspense>
           <CardFooter>
-          <LabelButton> </LabelButton>
+            <LabelButton> </LabelButton>
 
-<Link target='_blank' href="https://api.pakketdienstqls.nl/pdf/labels/afd6f16d-8a58-408d-b7f4-007c7718701d.pdf?token=3ef96ef0-7838-4091-8062-e9313534c41d&size=a6">Label</Link>
-        
-         <div>
-          
-  </div>
-
-       </CardFooter>
+            <div></div>
+          </CardFooter>
         </Card>
       </div>
     </div>
