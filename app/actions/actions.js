@@ -1,5 +1,4 @@
 'use server';
-//import { unstable_cacheLife as cacheLife } from 'next/cache';
 
 export const Token = async () => {
   const accountData = { account: 'NL' };
@@ -105,25 +104,50 @@ export const OrderImg = async (ean) => {
   return images.assets[0].variants[1].url;
 };
 
-export const Label = async () => {
-  const response = await fetch(
-    `https://ampx.nl/test.php`, //?page=${page}${odrId}
-    {
-      cache: 'no-cache',
+export const LabelQLS = async () => {
+  const basic =
+    'Basic ' + Buffer.from(`${process.env.CRIDIT}`).toString('base64');
+  //const basic = 'Basic ' + `${process.env.CRIDIT}`.toString('base64');
 
+  const qlsLabel = await fetch(
+    `https://api.pakketdienstqls.nl/companies/${process.env.COMPANIES}/shipments`,
+    {
       method: 'POST',
-      headers: {},
+      headers: {
+        Authorization: basic,
+        accept: '*/*',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        weight: 100,
+        reference: '123123213213',
+        brand_id: '4ca8fd28-8a90-4b90-8f27-27f5bc74df5b',
+        product_id: 1,
+        product_combination_id: 1,
+        cod_amount: 0,
+        piece_total: 1,
+        receiver_contact: {
+          name: 'someName',
+          companyname: '',
+          street: 'SomeStreet',
+          housenumber: '64',
+          address_line: '',
+          address2: '',
+          postalcode: '3047AH',
+          locality: 'Rotterdam',
+          country: 'NL',
+          email: 'Some@email.com',
+        },
+      }),
     }
   );
+  const response = await qlsLabel.json();
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch order');
-  }
+  // if (!response.ok) {
+  //   throw new Error('Failed to fetch order');
+  // }
+  const label = response.data.labels.a6;
+  console.log(label);
 
-  //const html = await response.json();
-  const html = response;
-
-  //console.log(JSON.stringify(images, null, '  '))
-
-  return html;
+  return label;
 };

@@ -1,7 +1,8 @@
 import { Suspense, React  } from 'react'
 import { OrderBol } from '../actions/actions'
 import Imagebol from '../components/image'
-import {ReactPDF, Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+import Link from 'next/link'
+import LabelButton from '../components/button'
 
 import {
   Card,
@@ -11,23 +12,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
- // const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+
+
 async function Order({ ordId }) {
 
-  const MyDocument = () => (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.section}>
-          <Text>Section #1</Text>
-        </View>
-        <View style={styles.section}>
-          <Text>Section #2</Text>
-        </View>
-      </Page>
-    </Document>
-  );
-
-  const stream = await renderToStream(<MyDocument />);
 
   const odr = await OrderBol(ordId)
 
@@ -109,11 +98,12 @@ async function Order({ ordId }) {
             ))}
           </Suspense>
           <CardFooter>
-         <h1>test</h1>
+          <LabelButton> </LabelButton>
 
+<Link target='_blank' href="https://api.pakketdienstqls.nl/pdf/labels/afd6f16d-8a58-408d-b7f4-007c7718701d.pdf?token=3ef96ef0-7838-4091-8062-e9313534c41d&size=a6">Label</Link>
+        
          <div>
-          {stream}
-         
+          
   </div>
 
        </CardFooter>

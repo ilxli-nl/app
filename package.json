@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.1.1",
     "@react-pdf/renderer": "^4.1.6",
     "@std/async": "npm:@jsr/std__async@^1.0.9",
     "class-variance-authority": "^0.7.1",
