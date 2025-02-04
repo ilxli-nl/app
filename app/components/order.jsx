@@ -68,13 +68,18 @@ async function Order({ ordId }) {
                         <h1 className='w-4/5 p-5'>
                           {item.product.title} <br />
                           <br />
-                          <p>EAN {item.product.ean}</p>
+                          <Link
+                            href={`https://www.bol.com/nl/nl/s/?searchtext=${item.product.ean}`}
+                            target='_blank'
+                          >
+                            <p>EAN {item.product.ean}</p>
+                          </Link>
                         </h1>
-                        <h1 className={` ${
-                        item.quantity >= 2
-                          ? 'bg-red-500'
-                          : 'bg-sky-500/100'
-                      }  p-3 text-9xl w-1/5 p-5  text-center rounded-md`}>
+                        <h1
+                          className={` ${
+                            item.quantity >= 2 ? 'bg-red-500' : 'bg-sky-500/100'
+                          }  p-3 text-9xl w-1/5 p-5  text-center rounded-md`}
+                        >
                           {item.quantity}
                         </h1>
                       </CardTitle>
@@ -101,7 +106,7 @@ async function Order({ ordId }) {
             ))}
           </Suspense>
           <CardFooter>
-            <LabelButton  > </LabelButton>
+            <LabelButton odr={odr}> </LabelButton>
 
             <div></div>
           </CardFooter>

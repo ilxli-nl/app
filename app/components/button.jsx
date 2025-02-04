@@ -11,7 +11,7 @@ function randomIntFromInterval(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min)
 }
 
-function LabelButton() {
+function LabelButton(odr) {
   const [response, setResponse] = useState('')
 
   const rndInt =
@@ -19,27 +19,32 @@ function LabelButton() {
     randomIntFromInterval(3, 9) *
     randomIntFromInterval(3, 9)
 
-  async function handeler() {
-    const id = await LabelQLS()
+  async function handeler(odr) {
+    const id = await LabelQLS(odr)
     //LabelQLS(id)
-    console.log(id)
+    //console.log(odr)
     setResponse(id)
   }
 
   function openLabel(url) {
-    window.open(url, 'mysite', 'width=500,height=700');
-}
+    window.open(url, 'mysite', 'width=500,height=700', 'toolbar=no')
+  }
 
   //
 
   return (
     <div className='flex space-x-4'>
-      <Button onClick={() => handeler()}>
+      <Button onClick={() => handeler(...odr, 555)}>
         Create Label
         {/* <Loader2 className="animate-spin" />disabled response */}
-      </Button> { '  '}
+      </Button>{' '}
+      {'  '}
       <Suspense fallback={<LoadingSpinner />}>
-        {response ? ( <Button onClick={()=>openLabel(response) }> Print </Button>) : ( '')}
+        {response ? (
+          <Button onClick={() => openLabel(response)}> Print </Button>
+        ) : (
+          ''
+        )}
       </Suspense>
     </div>
   )

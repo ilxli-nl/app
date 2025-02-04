@@ -1,7 +1,7 @@
-'use server';
+'use server'
 
 export const Token = async () => {
-  const accountData = { account: 'NL' };
+  const accountData = { account: 'NL' }
 
   const response = await fetch('https://ampx.nl/token.php', {
     method: 'POST',
@@ -10,19 +10,19 @@ export const Token = async () => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(accountData),
-  });
+  })
 
-  const result = await response.json();
+  const result = await response.json()
 
   //console.log(result);
 
-  return result;
-};
+  return result
+}
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const Orders = async (page) => {
-  const token = await Token();
+  const token = await Token()
   const response = await fetch(
     `${process.env.BOLAPI}retailer/orders`, //?page=${page}
     {
@@ -37,20 +37,20 @@ export const Orders = async (page) => {
         Authorization: 'Bearer ' + token,
       },
     }
-  );
+  )
   // if (!response.ok) {
   //   throw new Error('Failed to fetch orders');
   // }
 
-  const p = await response.json();
+  const p = await response.json()
 
-  const ordersall = await p.orders;
+  const ordersall = await p.orders
 
-  return ordersall;
-};
+  return ordersall
+}
 
 export const OrderBol = async (odrId) => {
-  const token = await Token();
+  const token = await Token()
 
   const response = await fetch(
     `${process.env.BOLAPI}retailer/orders/${odrId}`, //?page=${page}${odrId}
@@ -65,17 +65,18 @@ export const OrderBol = async (odrId) => {
         Authorization: 'Bearer ' + token,
       },
     }
-  );
-  const order = await response.json();
-  await sleep(500);
+  )
+  const order = await response.json()
+  await sleep(500)
   if (!response.ok) {
-    return {};
+    return {}
   }
-  return order;
-};
+  //console.log(order)
+  return order
+}
 
 export const OrderImg = async (ean) => {
-  const token = await Token();
+  const token = await Token()
 
   const response = await fetch(
     `${process.env.BOLAPI}retailer/products/${ean}/assets`, //?page=${page}${odrId}
@@ -90,23 +91,25 @@ export const OrderImg = async (ean) => {
         Authorization: 'Bearer ' + token,
       },
     }
-  );
+  )
 
   if (!response.ok) {
     // throw new Error('Failed to fetch order');
-    return '/no_image.jpg';
+    return '/no_image.jpg'
   }
 
-  const images = await response.json();
-  await sleep(500);
+  const images = await response.json()
+  await sleep(500)
   //console.log(JSON.stringify(images, null, '  '))
 
-  return images.assets[0].variants[1].url;
-};
+  return images.assets[0].variants[1].url
+}
 
-export const LabelQLS = async () => {
+export const LabelQLS = async (odr) => {
   const basic =
-    'Basic ' + Buffer.from(`${process.env.CRIDIT}`).toString('base64');
+    'Basic ' + Buffer.from(`${process.env.CRIDIT}`).toString('base64')
+
+  console.log(odr)
   //const basic = 'Basic ' + `${process.env.CRIDIT}`.toString('base64');
 
   // const qlsLabel = await fetch(
@@ -147,9 +150,9 @@ export const LabelQLS = async () => {
   // console.log(response);
 
   const lab =
-    'https://api.pakketdienstqls.nl/pdf/labels/21bfe211-5e22-4662-ad50-4f1a11ee6a67.pdf?token=5e4cce0f-55b1-408a-ba80-7d9d6ffbfa92&size=a6';
+    'https://api.pakketdienstqls.nl/pdf/labels/21bfe211-5e22-4662-ad50-4f1a11ee6a67.pdf?token=5e4cce0f-55b1-408a-ba80-7d9d6ffbfa92&size=a6'
 
-  return lab;
+  return lab
 
   //return 'Working'
-};
+}
