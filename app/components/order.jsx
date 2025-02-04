@@ -70,7 +70,11 @@ async function Order({ ordId }) {
                           <br />
                           <p>EAN {item.product.ean}</p>
                         </h1>
-                        <h1 className='text-9xl w-1/5 p-5 bg-sky-500/100 text-center rounded-md'>
+                        <h1 className={` ${
+                        item.quantity >= 2
+                          ? 'bg-red-500'
+                          : 'bg-sky-500/100'
+                      }  p-3 text-9xl w-1/5 p-5  text-center rounded-md`}>
                           {item.quantity}
                         </h1>
                       </CardTitle>

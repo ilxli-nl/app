@@ -26,31 +26,22 @@ function LabelButton() {
     setResponse(id)
   }
 
+  function openLabel(url) {
+    window.open(url, 'mysite', 'width=500,height=700');
+}
+
   //
 
   return (
-    <>
+    <div className='flex space-x-4'>
       <Button onClick={() => handeler()}>
-        {' '}
         Create Label
         {/* <Loader2 className="animate-spin" />disabled response */}
-      </Button>
+      </Button> { '  '}
       <Suspense fallback={<LoadingSpinner />}>
-        {response ? (
-          <button>
-            <Link
-              className={buttonVariants({ variant: 'outline' })}
-              href={response}
-              target='_blank'
-            >
-              Label
-            </Link>
-          </button>
-        ) : (
-          ''
-        )}
+        {response ? ( <Button onClick={()=>openLabel(response) }> Print </Button>) : ( '')}
       </Suspense>
-    </>
+    </div>
   )
 }
 

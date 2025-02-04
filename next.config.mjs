@@ -2,6 +2,7 @@
 const nextConfig = {
   experimental: {
     dynamicIO: false,
+    urlImports: ['https://api.pakketdienstqls.nl/pdf/labels/'],
   },
   images: {
     remotePatterns: [
@@ -21,6 +22,6 @@ const nextConfig = {
       },
     ],
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;
