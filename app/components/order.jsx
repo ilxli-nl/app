@@ -72,7 +72,7 @@ async function Order({ ordId }) {
                             href={`https://www.bol.com/nl/nl/s/?searchtext=${item.product.ean}`}
                             target='_blank'
                           >
-                            <p>EAN {item.product.ean}</p>
+                            <p className='text-blue-500'>EAN {item.product.ean}</p>
                           </Link>
                         </h1>
                         <h1
@@ -104,10 +104,12 @@ async function Order({ ordId }) {
                 </CardContent>
               </>
             ))}
-          </Suspense>
+        
           <CardFooter>
-            <LabelButtonQLS  odr={odr} />
+            {odrItm[0]?.fulfilment.distributionParty ==  'BOL' ? '' : <LabelButtonQLS odr={odr} />  } 
           </CardFooter>
+  </Suspense>
+
         </Card>
       </div>
     </div>
