@@ -11,14 +11,21 @@ function randomIntFromInterval(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min)
 }
 
-function LabelButtonDHLBP({ odr }) {
+function LabelButtonQLS({ odr }) {
   const [response, setResponse] = useState('')
 
-  async function handeler(odr) {
-    const id = await LabelQLS(odr)
+
+
+
+  async function handeler(FormData) {
+   
+    odr.QLSproductId = FormData.get("QLSproductId")
+    odr.QLScombination = FormData.get("QLScombination")
     //LabelQLS(id)
     //console.log(product_id)
-    //console.log(combination)
+ const id = await LabelQLS(odr)
+
+    console.log(odr)
     setResponse(id)
   }
 
@@ -30,11 +37,27 @@ function LabelButtonDHLBP({ odr }) {
 
   return (
     <div className='flex space-x-4'>
-      <Button onClick={() => handeler(odr)}>
-        Create Label DHL Pakje
+      <form action={handeler}>
+
+      <input type="hidden" id="postId" name="QLSproductId" value="99999" />
+      <input type="hidden" id="postId" name="QLScombination" value="888888" />
+      <Button type="submit">
+        Create Label DHL BP
         {/* <Loader2 className="animate-spin" />disabled response */}
-      </Button>{' '}
-      {'  '}
+      </Button>
+      </form>
+
+
+      <form action={handeler}>
+
+<input type="hidden" id="postId" name="QLSproductId" value="3333" />
+<input type="hidden" id="postId" name="QLScombination" value="11111" />
+<Button type="submit">
+  Create Label DHL Pakje
+  {/* <Loader2 className="animate-spin" />disabled response */}
+</Button>
+</form>
+   
       <Suspense fallback={<LoadingSpinner />}>
         {response ? (
           <Button onClick={() => openLabel(response)}> Print </Button>
@@ -46,4 +69,4 @@ function LabelButtonDHLBP({ odr }) {
   )
 }
 
-export default LabelButtonDHLBP
+export default LabelButtonQLS

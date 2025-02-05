@@ -2,8 +2,7 @@ import { Suspense, React } from 'react'
 import { OrderBol } from '../actions/actions'
 import Imagebol from '../components/image'
 import Link from 'next/link'
-import LabelButtonDHLBP from '../components/DHLBP_button'
-import LabelButtonDHLPakje from '../components/DHLPak_button'
+import LabelButtonQLS from '../components/QLS_button'
 
 import {
   Card,
@@ -107,16 +106,7 @@ async function Order({ ordId }) {
             ))}
           </Suspense>
           <CardFooter>
-            <LabelButtonDHLPakje
-              odr={odr}
-              {...(odr.QLSproductId = 1)}
-              {...(odr.QLScombination = 2)}
-            />{' '}
-            <LabelButtonDHLBP
-              odr={odr}
-              {...(odr.QLSproductId = 3)}
-              {...(odr.QLScombination = 4)}
-            />
+            <LabelButtonQLS  odr={odr} />
           </CardFooter>
         </Card>
       </div>
