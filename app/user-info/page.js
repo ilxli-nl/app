@@ -1,23 +1,33 @@
-import { auth } from '@/auth'
-import Image from 'next/image'
+import { auth } from '@/auth';
+//import Image from 'next/image';
 
-export default async function UserInfo() {
-  const session = await auth()
+import db from '../../drizzle/db';
+import { users } from '../../drizzle/schema';
+
+async function getDB() {
+  const result = await db.select().from(users);
+
+  console.log(result);
+  return {
+    props: {
+      users: result,
+    },
+  };
+}
+
+export default async function Home({ users }) {
+  users = await getDB();
+  console.log(users);
   return (
     <div>
-      {' '}
-      <h1> NextAuth v5 + Next 15</h1>
-      <p> User signed in with name: {session?.user?.name}</p>
-      <p> User signed in with email: {session?.user?.email}</p>
-      {session?.user?.image && (
-        <Image
-          src={session.user.image}
-          width={48}
-          height={48}
-          alt={session.user.name ?? 'Avatar'}
-          style={{ borderRadius: '50%' }}
-        />
-      )}
+      <h1>Users</h1>
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>
+            {user.name} - {user.email}
+          </li>
+        ))}
+      </ul>
     </div>
-  )
+  );
 }
