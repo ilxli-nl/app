@@ -1,5 +1,5 @@
 import localFont from 'next/font/local';
-import './globals.css';
+import '@/assets/styles/globals.css';
 import Navbar from './components/navbar';
 import QueryProvider from './providers/QueryProvider';
 
