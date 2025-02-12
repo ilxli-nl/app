@@ -18,8 +18,6 @@ async function Order({ ordId }) {
 
   const odrItm = await odr.orderItems
 
-  const typeorder = await odrItm[0].fulfilment.distributionParty
-
   //console.log(JSON.stringify(odr, null, '  '))
 
   return (
@@ -36,86 +34,82 @@ async function Order({ ordId }) {
               </div>
             </CardTitle>
           </CardHeader>
-
-          <>
+          <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}>
             {odrItm?.map((item) => (
-              <CardContent
-                className={
-                  item.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''
-                }
-              >
-                <div className='flex items-center'>
-                  <figure
-                    className={` ${
-                      item.fulfilment.distributionParty == 'BOL'
-                        ? 'bg-sky-500'
-                        : 'bg-orange-500'
-                    }  p-3 rounded-md`}
-                  >
-                    <Imagebol className='h-auto' ean={item.product.ean} />
-                    <figcaption
-                      className={`mt-2 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
-                        item.fulfilment.latestDeliveryDate ??
-                        `bg-red-400 rounded-md`
-                      }`}
+              <>
+                <CardContent
+                  className={
+                    item.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''
+                  }
+                >
+                  <div className='flex items-center'>
+                    <figure
+                      className={` ${
+                        item.fulfilment.distributionParty == 'BOL'
+                          ? 'bg-sky-500'
+                          : 'bg-orange-500'
+                      }  p-3 rounded-md`}
                     >
-                      {item.fulfilment.exactDeliveryDate
-                        ? `Exact: ${item.fulfilment.exactDeliveryDate}`
-                        : item.fulfilment.latestDeliveryDate}
-                    </figcaption>
-                  </figure>
-
-                  <div className='w-2/3'>
-                    <CardTitle className='flex items-center'>
-                      <h1 className='w-4/5 p-5'>
-                        {item.product.title} <br />
-                        <br />
-                        <Link
-                          href={`https://www.bol.com/nl/nl/s/?searchtext=${item.product.ean}`}
-                          target='_blank'
-                        >
-                          <p className='text-blue-500'>
-                            EAN {item.product.ean}
-                          </p>
-                        </Link>
-                      </h1>
-                      <h1
-                        className={` ${
-                          item.quantity >= 2 ? 'bg-red-500' : 'bg-sky-500/100'
-                        }  p-3 text-9xl w-1/5 p-5  text-center rounded-md`}
+                      <Imagebol className='h-auto' ean={item.product.ean} />
+                      <figcaption
+                        className={`mt-2 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
+                          item.fulfilment.latestDeliveryDate ??
+                          `bg-red-400 rounded-md`
+                        }`}
                       >
-                        {item.quantity}
-                      </h1>
-                    </CardTitle>
-                    <CardDescription>
-                      <h1>
-                        {odr.shipmentDetails.firstName}{' '}
-                        {odr.shipmentDetails.surname}
-                      </h1>
-                      <p>
-                        {odr.shipmentDetails.streetName}{' '}
-                        {odr.shipmentDetails.houseNumber}{' '}
-                        {odr.shipmentDetails.houseNumberExtension}
-                      </p>
-                      <p>
-                        {odr.shipmentDetails.zipCode} {odr.shipmentDetails.city}{' '}
-                        {odr.shipmentDetails.houseNumberExtension}
-                      </p>
-                    </CardDescription>
+                        {item.fulfilment.exactDeliveryDate
+                          ? `Exact: ${item.fulfilment.exactDeliveryDate}`
+                          : item.fulfilment.latestDeliveryDate}
+                      </figcaption>
+                    </figure>
+
+                    <div className='w-2/3'>
+                      <CardTitle className='flex items-center'>
+                        <h1 className='w-4/5 p-5'>
+                          {item.product.title} <br />
+                          <br />
+                          <Link
+                            href={`https://www.bol.com/nl/nl/s/?searchtext=${item.product.ean}`}
+                            target='_blank'
+                          >
+                            <p className='text-blue-500'>EAN {item.product.ean}</p>
+                          </Link>
+                        </h1>
+                        <h1
+                          className={` ${
+                            item.quantity >= 2 ? 'bg-red-500' : 'bg-sky-500/100'
+                          }  p-3 text-9xl w-1/5 p-5  text-center rounded-md`}
+                        >
+                          {item.quantity}
+                        </h1>
+                      </CardTitle>
+                      <CardDescription>
+                        <h1>
+                          {odr.shipmentDetails.firstName}{' '}
+                          {odr.shipmentDetails.surname}
+                        </h1>
+                        <p>
+                          {odr.shipmentDetails.streetName}{' '}
+                          {odr.shipmentDetails.houseNumber}{' '}
+                          {odr.shipmentDetails.houseNumberExtension}
+                        </p>
+                        <p>
+                          {odr.shipmentDetails.zipCode}{' '}
+                          {odr.shipmentDetails.city}{' '}
+                          {odr.shipmentDetails.houseNumberExtension}
+                        </p>
+                      </CardDescription>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
+                </CardContent>
+              </>
             ))}
-            <CardFooter>
-              {typeorder == 'BOL' ? (
-                ''
-              ) : (
-                <Suspense>
-                  <LabelButtonQLS odr={odr} />
-                </Suspense>
-              )}
-            </CardFooter>
-          </>
+        
+          <CardFooter>
+            {odrItm[0]?.fulfilment.distributionParty ==  'BOL' ? '' : <LabelButtonQLS odr={odr} />  } 
+          </CardFooter>
+  </Suspense>
+
         </Card>
       </div>
     </div>
