@@ -23,7 +23,7 @@ async function Order({ ordId }) {
   return (
     <div key={odr.orderId}>
       <div>
-        <Card key={odr.orderId}>
+        <Card className="bg-zinc-50" key={odr.orderId}>
           <CardHeader>
             <CardTitle className='flex justify-between'>
               <div>
