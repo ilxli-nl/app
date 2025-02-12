@@ -2,7 +2,7 @@
 import { Suspense, useState } from 'react'
 //import { Loader2 } from "lucide-react"
 import { LabelQLS } from '../actions/actions'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '../../components/ui/button'
 import Link from 'next/link'
 import LoadingSpinner from './loadingSpinner'
 
