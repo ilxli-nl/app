@@ -1,5 +1,4 @@
 import { prisma } from '@/prisma';
-import InfiniteOrders from '../components/InfiniteOrders';
 
 const Database = async () => {
   const users = await prisma.user.findMany();
@@ -10,8 +9,10 @@ const Database = async () => {
     <div>
       <h1>Users</h1>
       <ul>
-        {users?.map((user) => (
-          <li key={user.id}>{user.email}</li>
+        {users.map((user) => (
+          <li key={user.id}>
+            {user.name} - {user.email}
+          </li>
         ))}
       </ul>
       {/* <InfiniteOrders /> */}
