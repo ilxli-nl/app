@@ -1,4 +1,5 @@
 import { prisma } from '@/prisma';
+import InfiniteOrders from '../components/InfiniteOrders';
 
 const Database = async () => {
   const users = await prisma.user.findMany();
@@ -15,7 +16,7 @@ const Database = async () => {
           </li>
         ))}
       </ul>
-      {/* <InfiniteOrders /> */}
+      <InfiniteOrders />
     </div>
   );
 };

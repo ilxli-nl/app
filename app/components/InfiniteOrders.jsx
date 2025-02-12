@@ -5,7 +5,7 @@ import { Token } from '../actions/actions';
 
 const fetchOrders = async () => {
   const token = await Token();
-
+  console.log(token)
   const res = await fetch(
     `${process.env.BOLAPI}retailer/orders`, //?page=${page}
     {
@@ -21,12 +21,16 @@ const fetchOrders = async () => {
       },
     }
   );
-  return res.json();
+
+  const resp = await res.json()
+  
+  //console.log(resp)
+  return resp;
 };
 const InfiniteOrders = () => {
-  const orderz = useQuery({ queryKey: ['Orderz'], queryFn: fetchOrders });
+  const {data, isLoading, isError} = useQuery({ queryKey: ['Orderz'], queryFn: fetchOrders });
 
-  console.log(orderz);
+  console.log(data);
 
 
   return (
