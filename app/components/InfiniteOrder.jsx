@@ -1,9 +1,10 @@
+"use client"
 import { Suspense, React } from 'react'
-import { OrderBol } from '../actions/actions'
-import Imagebol from '../components/image'
-import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query';
+import { OrderBol,OrderImg } from '../actions/actions';
+import Img from '../components/img'
 import LabelButtonQLS from '../components/QLS_button'
-
+import Link from 'next/link'
 import {
   Card,
   CardContent,
@@ -13,17 +14,26 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 
-async function Order({ ordId }) {
-  const odr = await OrderBol(ordId)
 
-  const odrItm = await odr.orderItems
 
-  //console.log(JSON.stringify(odr, null, '  '))
+
+const Order = ({id})  => {
+  const getOrder = ()=>{
+    return  OrderBol(id)
+  }
+
+    const {isPending , error, data, isFetching} = useQuery({ queryKey: [`Order${id}`], queryFn: getOrder });
+    if (isPending) return 'Loading...'
+    if (error) return 'An error has occurred: ' + error.message
+    const odr = data
+    const odrItm = data.orderItems
+
 
   return (
+
     <div key={odr.orderId}>
       <div>
-        <Card className="bg-zinc-50" key={odr.orderId}>
+        <Card key={odr.orderId} className="bg-zinc-50" >
           <CardHeader>
             <CardTitle className='flex justify-between'>
               <div>
@@ -34,7 +44,7 @@ async function Order({ ordId }) {
               </div>
             </CardTitle>
           </CardHeader>
-          <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}>
+          {/* <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}> */}
             {odrItm?.map((item) => (
               <>
                 <CardContent
@@ -50,7 +60,8 @@ async function Order({ ordId }) {
                           : 'bg-orange-500'
                       }  p-3 rounded-md`}
                     >
-                      <Imagebol className='h-auto' ean={item.product.ean} />
+<Img ean={item.product.ean} />
+
                       <figcaption
                         className={`mt-2 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
                           item.fulfilment.latestDeliveryDate ??
@@ -108,12 +119,11 @@ async function Order({ ordId }) {
           <CardFooter>
             {odrItm[0]?.fulfilment.distributionParty ==  'BOL' ? '' : <LabelButtonQLS odr={odr} />  } 
           </CardFooter>
-  </Suspense>
+  {/* </Suspense> */}
 
         </Card>
       </div>
     </div>
-  )
-}
-
-export default Order
+  );
+};
+export default Order;

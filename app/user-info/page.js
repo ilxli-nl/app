@@ -1,5 +1,6 @@
 import { prisma } from '@/prisma';
 import InfiniteOrders from '../components/InfiniteOrders';
+import InfiniteOrder from '../components/InfiniteOrder';
 
 const Database = async () => {
   const users = await prisma.user.findMany();
