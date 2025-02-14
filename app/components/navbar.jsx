@@ -37,12 +37,12 @@ const Navbar =  () => {
                   Home
                 </Link>
                 <Link
-                  href='/user-info'
+                  href='/orders'
                   className={`${
                     pathname === '/properties' ? 'bg-black' : ''
                   } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
                 >
-                  User Info
+                  Orders
                 </Link>
 
                 <button className={`${

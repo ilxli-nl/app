@@ -1,7 +1,7 @@
 "use client"
 import { useQuery } from '@tanstack/react-query';
 import { Orders } from '../actions/actions';
-import Order from './InfiniteOrder';
+import Order from './Order';
 
 const InfiniteOrders = ()  => {
   const {isPending, error, data, isFetching} = useQuery({ queryKey: ['Orders'], queryFn: Orders });

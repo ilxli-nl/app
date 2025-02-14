@@ -1,5 +1,7 @@
 'use server';
 
+//import prisma from '@/lib/prisma';
+
 export const Token = async () => {
   const accountData = { account: 'NL' };
 
@@ -71,6 +73,54 @@ export const OrderBol = async (odrId) => {
   if (!response.ok) {
     return {};
   }
+  console.log(order);
+  //   await prisma.orders.create({
+  //    data: {
+  //   //     title,
+  //  orderId: order.orderId,
+  //  orderItemId: order.orderItems.orderItemId,
+  //    account: 'NL',
+  //   dateTimeOrderPlaced: order.orderPlacedDateTime
+  //   // s_salutationCode      String
+  //   // s_firstName           String
+  //   // s_surName             String
+  //   // s_streetName          String
+  //   // s_houseNumber         String
+  //   // s_houseNumberExtended String?
+  //   // s_zipCode             String
+  //   // s_city                String
+  //   // s_countryCode         String
+  //   // email                 String
+  //   // language              String
+  //   // b_salutationCode      String?
+  //   // b_firstName           String?
+  //   // b_surName             String?
+  //   // b_streetName          String?
+  //   // b_houseNumber         String?
+  //   // b_houseNumberExtended String?
+  //   // b_zipCode             String?
+  //   // b_city                String?
+  //   // b_countryCode         String?
+  //   // b_company             String?
+  //   // offerId               String
+  //   // ean                   String
+  //   // title                 String
+  //   // img                   String
+  //   // url                   String
+  //   // quantity              String
+  //   // offerPrice            String
+  //   // transactionFee        String?
+  //   // latestDeliveryDate    DateTime?
+  //   // exactDeliveryDate     DateTime?
+  //   // expiryDate            DateTime?
+  //   // offerCondition        String
+  //   // cancelRequest         String?
+  //   // fulfilmentMethod      String?
+  //   // fulfilled             String?
+  //   // qls_time              DateTime?
+  //    },
+  //  });
+
   //console.log(order)
   return order;
 };
@@ -109,7 +159,7 @@ export const LabelQLS = async (odr) => {
   const basic =
     'Basic ' + Buffer.from(`${process.env.CRIDIT}`).toString('base64');
 
-  console.log(odr);
+  //console.log(odr);
   //const basic = 'Basic ' + `${process.env.CRIDIT}`.toString('base64');
 
   // const qlsLabel = await fetch(

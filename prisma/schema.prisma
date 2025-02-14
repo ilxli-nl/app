@@ -12,12 +12,53 @@ model User {
   email       String   @unique
   username    String   @unique
   displayName String?
-  bio         String?
-  location    String?
   job         String?
-  website     String?
   img         String?
   cover       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Orders {
+  orderId               String    @id @unique
+  orderItemId           String
+  account               String
+  dateTimeOrderPlaced   String
+  s_salutationCode      String
+  s_firstName           String
+  s_surName             String
+  s_streetName          String
+  s_houseNumber         String
+  s_houseNumberExtended String?
+  s_zipCode             String
+  s_city                String
+  s_countryCode         String
+  email                 String
+  language              String
+  b_salutationCode      String?
+  b_firstName           String?
+  b_surName             String?
+  b_streetName          String?
+  b_houseNumber         String?
+  b_houseNumberExtended String?
+  b_zipCode             String?
+  b_city                String?
+  b_countryCode         String?
+  b_company             String?
+  offerId               String
+  ean                   String
+  title                 String
+  img                   String
+  url                   String
+  quantity              String
+  offerPrice            String
+  transactionFee        String?
+  latestDeliveryDate    DateTime?
+  exactDeliveryDate     DateTime?
+  expiryDate            DateTime?
+  offerCondition        String
+  cancelRequest         String?
+  fulfilmentMethod      String?
+  fulfilled             String?
+  qls_time              DateTime?
 }

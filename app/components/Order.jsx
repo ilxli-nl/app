@@ -1,9 +1,9 @@
 "use client"
 import { Suspense, React } from 'react'
 import { useQuery } from '@tanstack/react-query';
-import { OrderBol,OrderImg } from '../actions/actions';
-import Img from '../components/img'
-import LabelButtonQLS from '../components/QLS_button'
+import { OrderBol} from '../actions/actions';
+import Img from './img'
+import LabelButtonQLS from './QLS_button'
 import Link from 'next/link'
 import {
   Card,
@@ -21,6 +21,9 @@ const Order = ({id})  => {
   const getOrder = ()=>{
     return  OrderBol(id)
   }
+  const myRnId = () => parseInt(Date.now() * Math.random());
+
+  const key = myRnId()
 
     const {isPending , error, data, isFetching} = useQuery({ queryKey: [`Order${id}`], queryFn: getOrder });
     if (isPending) return 'Loading...'
@@ -28,12 +31,11 @@ const Order = ({id})  => {
     const odr = data
     const odrItm = data.orderItems
 
-
   return (
 
     <div key={odr.orderId}>
       <div>
-        <Card key={odr.orderId} className="bg-zinc-50" >
+        <Card key={key} className="bg-zinc-50" >
           <CardHeader>
             <CardTitle className='flex justify-between'>
               <div>
