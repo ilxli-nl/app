@@ -73,14 +73,14 @@ export const OrderBol = async (odrId) => {
   if (!response.ok) {
     return {};
   }
-  console.log(order);
-  //   await prisma.orders.create({
-  //    data: {
-  //   //     title,
-  //  orderId: order.orderId,
-  //  orderItemId: order.orderItems.orderItemId,
-  //    account: 'NL',
-  //   dateTimeOrderPlaced: order.orderPlacedDateTime
+  // console.log(order);
+  // await prisma.orders.create({
+  //   data: {
+  //     //     title,
+  //     orderId: order.orderId,
+  //     orderItemId: order.orderItems[0].orderItemId,
+  //     account: 'NL',
+  //     dateTimeOrderPlaced: order.orderPlacedDateTime,
   //   // s_salutationCode      String
   //   // s_firstName           String
   //   // s_surName             String
@@ -118,8 +118,8 @@ export const OrderBol = async (odrId) => {
   //   // fulfilmentMethod      String?
   //   // fulfilled             String?
   //   // qls_time              DateTime?
-  //    },
-  //  });
+  //   },
+  // });
 
   //console.log(order)
   return order;
