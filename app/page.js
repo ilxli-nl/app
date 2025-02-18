@@ -1,11 +1,8 @@
 import { auth } from '@/auth';
-import { Orders } from './actions/actions';
-import { SignOutButton } from './components/sign-out-button';
 import { SignInButton } from './components/sign-in-button';
 
 export default async function Home() {
   const session = await auth();
-  const orders = await Orders();
   if (session?.user) {
     return (
       <>
