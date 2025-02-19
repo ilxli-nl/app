@@ -86,7 +86,7 @@ export const OrderImg = async (ean) => {
 
 export const AddDB = async (order) => {
 
- console.dir(order.orderItems);
+ //console.dir(order.orderItems);
 const ean = order.orderItems[0].product.ean
  const img = await OrderImg(ean)
  const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`

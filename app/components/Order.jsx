@@ -31,6 +31,8 @@ const Order = ({id})  => {
     const odr = data
     const odrItm = data.orderItems
 
+    console.log(key)
+
   return (
 
     <div key={odr.orderId}>
