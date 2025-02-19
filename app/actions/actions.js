@@ -1,6 +1,7 @@
 'use server';
+const { DateTime } = require('luxon');
 
-//import prisma from '@/lib/prisma';
+import { prisma } from '@/prisma';
 
 export const Token = async () => {
   const accountData = { account: 'NL' };
@@ -51,80 +52,6 @@ export const Orders = async (page) => {
   return ordersall;
 };
 
-export const OrderBol = async (odrId) => {
-  const token = await Token();
-
-  const response = await fetch(
-    `${process.env.BOLAPI}retailer/orders/${odrId}`, //?page=${page}${odrId}
-    {
-      cache: 'force-cache',
-      next: {
-        revalidate: 9000,
-      },
-      method: 'GET',
-      headers: {
-        Accept: 'application/vnd.retailer.v10+json',
-        Authorization: 'Bearer ' + token,
-      },
-    }
-  );
-  const order = await response.json();
-  //await sleep(500);
-  if (!response.ok) {
-    return {};
-  }
-  // console.log(order);
-  // await prisma.orders.create({
-  //   data: {
-  //     //     title,
-  //     orderId: order.orderId,
-  //     orderItemId: order.orderItems[0].orderItemId,
-  //     account: 'NL',
-  //     dateTimeOrderPlaced: order.orderPlacedDateTime,
-  //   // s_salutationCode      String
-  //   // s_firstName           String
-  //   // s_surName             String
-  //   // s_streetName          String
-  //   // s_houseNumber         String
-  //   // s_houseNumberExtended String?
-  //   // s_zipCode             String
-  //   // s_city                String
-  //   // s_countryCode         String
-  //   // email                 String
-  //   // language              String
-  //   // b_salutationCode      String?
-  //   // b_firstName           String?
-  //   // b_surName             String?
-  //   // b_streetName          String?
-  //   // b_houseNumber         String?
-  //   // b_houseNumberExtended String?
-  //   // b_zipCode             String?
-  //   // b_city                String?
-  //   // b_countryCode         String?
-  //   // b_company             String?
-  //   // offerId               String
-  //   // ean                   String
-  //   // title                 String
-  //   // img                   String
-  //   // url                   String
-  //   // quantity              String
-  //   // offerPrice            String
-  //   // transactionFee        String?
-  //   // latestDeliveryDate    DateTime?
-  //   // exactDeliveryDate     DateTime?
-  //   // expiryDate            DateTime?
-  //   // offerCondition        String
-  //   // cancelRequest         String?
-  //   // fulfilmentMethod      String?
-  //   // fulfilled             String?
-  //   // qls_time              DateTime?
-  //   },
-  // });
-
-  //console.log(order)
-  return order;
-};
-
 export const OrderImg = async (ean) => {
   const token = await Token();
 
@@ -154,6 +81,96 @@ export const OrderImg = async (ean) => {
 
   return images.assets[0].variants[1].url;
 };
+
+
+
+export const AddDB = async (order) => {
+
+ console.dir(order.orderItems);
+const ean = order.orderItems[0].product.ean
+ const img = await OrderImg(ean)
+ const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`
+
+
+  await prisma.orders.create({
+    data: {
+      //     title,
+      orderId: order.orderId,
+      orderItemId: order.orderItems[0].orderItemId,
+      account: 'NL',
+      dateTimeOrderPlaced: order.orderPlacedDateTime,
+      s_salutationCode:  order.shipmentDetails.salutation,
+ s_firstName: order.shipmentDetails.firstName,
+ s_surname: order.shipmentDetails.surname,
+  s_streetName: order.shipmentDetails.streetName,
+  s_houseNumber: order.shipmentDetails.houseNumber,
+  s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
+  s_zipCode: order.shipmentDetails.zipCode,
+  s_city: order.shipmentDetails.city,
+  s_countryCode: order.shipmentDetails.countryCode,
+  email: order.shipmentDetails.email,
+  language: order.shipmentDetails.language,
+  b_salutationCode:  order.billingDetails.salutation,
+  b_firstName: order.billingDetails.firstName,
+  b_surname: order.billingDetails.surname,
+  b_streetName: order.billingDetails.streetName,
+  b_houseNumber: order.billingDetails.houseNumber,
+  b_houseNumberExtended: order.billingDetails.houseNumberExtended,
+  b_zipCode: order.billingDetails.zipCode,
+  b_city: order.billingDetails.city,
+  b_countryCode: order.billingDetails.countryCode,
+  b_company: order.billingDetails.company,
+   offerId: order.orderItems[0].offer.offerId,
+   ean: ean,
+   title:order.orderItems[0].product.title,
+   img: img,             
+   url: url,
+   quantity: order.orderItems[0].quantity,
+   unitPrice: order.orderItems[0].unitPrice,
+   commission: order.orderItems[0].commission,
+  latestDeliveryDate: DateTime.fromISO(order.orderItems[0].fulfilment.latestDeliveryDate),
+   exactDeliveryDate: DateTime.fromISO(order.orderItems[0].fulfilment.exactDeliveryDate),
+  expiryDate: DateTime.fromISO(order.orderItems[0].fulfilment.expiryDate),
+  offerCondition: order.orderItems[0].offer.offerCondition, 
+  cancelRequest:order.orderItems[0].cancelRequest,
+  method : order.orderItems[0].fulfilment.method,
+  distributionParty: order.orderItems[0].fulfilment.distributionParty,
+  fulfilled: '',
+  qls_time: DateTime.fromISO()
+    },
+  });
+
+  //console.log(order)
+ 
+};
+
+
+export const OrderBol = async (odrId) => {
+  const token = await Token();
+
+  const response = await fetch(
+    `${process.env.BOLAPI}retailer/orders/${odrId}`, //?page=${page}${odrId}
+    {
+      cache: 'force-cache',
+      next: {
+        revalidate: 9000,
+      },
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.retailer.v10+json',
+        Authorization: 'Bearer ' + token,
+      },
+    }
+  );
+  const order = await response.json();
+  //await sleep(500);
+  if (!response.ok) {
+    return {};
+  }
+ AddDB(order)
+  return order;
+};
+
 
 export const LabelQLS = async (odr) => {
   const basic =

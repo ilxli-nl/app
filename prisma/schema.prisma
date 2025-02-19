@@ -20,13 +20,13 @@ model User {
 }
 
 model Orders {
-  orderId               String    @id @unique
-  orderItemId           String
+  orderId               String    
+  orderItemId           String    @id @unique
   account               String
   dateTimeOrderPlaced   String
   s_salutationCode      String
   s_firstName           String
-  s_surName             String
+  s_surname             String
   s_streetName          String
   s_houseNumber         String
   s_houseNumberExtended String?
@@ -37,7 +37,7 @@ model Orders {
   language              String
   b_salutationCode      String?
   b_firstName           String?
-  b_surName             String?
+  b_surname             String?
   b_streetName          String?
   b_houseNumber         String?
   b_houseNumberExtended String?
@@ -50,15 +50,16 @@ model Orders {
   title                 String
   img                   String
   url                   String
-  quantity              String
-  offerPrice            String
-  transactionFee        String?
+  quantity              Int
+  unitPrice             Float
+  commission            Float
   latestDeliveryDate    DateTime?
   exactDeliveryDate     DateTime?
   expiryDate            DateTime?
-  offerCondition        String
+  offerCondition        String?
   cancelRequest         String?
-  fulfilmentMethod      String?
+  method                String?
+  distributionParty     String?
   fulfilled             String?
   qls_time              DateTime?
 }
