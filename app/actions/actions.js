@@ -14,72 +14,91 @@ export const Token = async () => {
     },
     body: JSON.stringify(accountData),
   })
-
   const result = await response.json()
-
-  //console.log(result);
 
   return result
 }
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+//const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const Orders = async (page) => {
   const token = await Token()
-  const response = await fetch(
-    `${process.env.BOLAPI}retailer/orders`, //?page=${page}
-    {
-      // cache: 'force-cache',
-      // next: {
-      //   revalidate: 9000,
-      // },
-      method: 'GET',
-      cache: 'no-store',
-      headers: {
-        Accept: 'application/vnd.retailer.v10+json',
-        Authorization: 'Bearer ' + token,
-      },
-    }
-  )
-  // if (!response.ok) {
-  //   throw new Error('Failed to fetch orders');
-  // }
+  const response = await fetch(`${process.env.BOLAPI}retailer/orders`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/vnd.retailer.v10+json',
+      Authorization: 'Bearer ' + token,
+    },
+  })
 
   const p = await response.json()
-
   const ordersall = await p.orders
-
   return ordersall
 }
 
+const AddDBImage = async (ean, image) => {
+  await prisma.images.upsert({
+    where: { ean },
+    update: {
+      ean,
+      image,
+    },
+    create: {
+      ean,
+      image,
+    },
+  })
+
+  return 'ok'
+}
+
 export const OrderImg = async (ean) => {
-  const token = await Token()
+  const imgFromDB = await prisma.images.findUnique({
+    where: {
+      ean,
+    },
+  })
+  if (imgFromDB !== null) {
+    const imgFrDB = imgFromDB.image
 
-  const response = await fetch(
-    `${process.env.BOLAPI}retailer/products/${ean}/assets`, //?page=${page}${odrId}
-    {
-      cache: 'force-cache',
-      next: {
-        revalidate: 9000,
-      },
-      method: 'GET',
-      headers: {
-        Accept: 'application/vnd.retailer.v10+json',
-        Authorization: 'Bearer ' + token,
-      },
+    // console.log(imgFrDB)
+
+    return imgFrDB
+  } else {
+    const token = await Token()
+
+    const response = await fetch(
+      `${process.env.BOLAPI}retailer/products/${ean}/assets`, //?page=${page}${odrId}
+      {
+        cache: 'force-cache',
+        next: {
+          revalidate: 9000,
+        },
+        method: 'GET',
+        headers: {
+          Accept: 'application/vnd.retailer.v10+json',
+          Authorization: 'Bearer ' + token,
+        },
+      }
+    )
+
+    if (!response.ok) {
+      // throw new Error('Failed to fetch order');
+      return '/no_image.jpg'
     }
-  )
 
-  if (!response.ok) {
-    // throw new Error('Failed to fetch order');
-    return '/no_image.jpg'
+    const images = await response.json()
+
+    const img = images.assets[0].variants[1].url
+    //await sleep(500);
+    //console.log(JSON.stringify(images, null, '  '))
+
+    //const addImgToDB = AddDBImage(ean, img)
+    AddDBImage(ean, img)
+
+    return img
   }
-
-  const images = await response.json()
-  //await sleep(500);
-  //console.log(JSON.stringify(images, null, '  '))
-
-  return images.assets[0].variants[1].url
 }
 
 export const AddDB = async (order) => {
@@ -88,56 +107,113 @@ export const AddDB = async (order) => {
   const img = await OrderImg(ean)
   const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`
 
-  await prisma.orders.create({
-    data: {
-      orderId: order.orderId,
-      orderItemId: order.orderItems[0].orderItemId,
-      account: 'NL',
-      dateTimeOrderPlaced: order.orderPlacedDateTime,
-      s_salutationCode: order.shipmentDetails.salutation,
-      s_firstName: order.shipmentDetails.firstName,
-      s_surname: order.shipmentDetails.surname,
-      s_streetName: order.shipmentDetails.streetName,
-      s_houseNumber: order.shipmentDetails.houseNumber,
-      s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
-      s_zipCode: order.shipmentDetails.zipCode,
-      s_city: order.shipmentDetails.city,
-      s_countryCode: order.shipmentDetails.countryCode,
-      email: order.shipmentDetails.email,
-      language: order.shipmentDetails.language,
-      b_salutationCode: order.billingDetails.salutation,
-      b_firstName: order.billingDetails.firstName,
-      b_surname: order.billingDetails.surname,
-      b_streetName: order.billingDetails.streetName,
-      b_houseNumber: order.billingDetails.houseNumber,
-      b_houseNumberExtended: order.billingDetails.houseNumberExtended,
-      b_zipCode: order.billingDetails.zipCode,
-      b_city: order.billingDetails.city,
-      b_countryCode: order.billingDetails.countryCode,
-      b_company: order.billingDetails.company,
-      offerId: order.orderItems[0].offer.offerId,
-      ean: ean,
-      title: order.orderItems[0].product.title,
-      img: img,
-      url: url,
-      quantity: order.orderItems[0].quantity,
-      unitPrice: order.orderItems[0].unitPrice,
-      commission: order.orderItems[0].commission,
-      latestDeliveryDate: DateTime.fromISO(
-        order.orderItems[0].fulfilment.latestDeliveryDate
-      ),
-      exactDeliveryDate: DateTime.fromISO(
-        order.orderItems[0].fulfilment.exactDeliveryDate
-      ),
-      expiryDate: DateTime.fromISO(order.orderItems[0].fulfilment.expiryDate),
-      offerCondition: order.orderItems[0].offer.offerCondition,
-      cancelRequest: order.orderItems[0].cancelRequest,
-      method: order.orderItems[0].fulfilment.method,
-      distributionParty: order.orderItems[0].fulfilment.distributionParty,
-      fulfilled: '',
-      qls_time: DateTime.fromISO(),
-    },
-  })
+  for (const i in order.orderItems) {
+    await prisma.orders.upsert({
+      where: { orderItemId: order.orderItems[i].orderItemId },
+      update: {
+        cancelRequest: order.orderItems[i].cancelRequest,
+      },
+      create: {
+        orderId: order.orderId,
+        orderItemId: order.orderItems[i].orderItemId,
+        account: 'NL',
+        dateTimeOrderPlaced: order.orderPlacedDateTime,
+        s_salutationCode: order.shipmentDetails.salutation,
+        s_firstName: order.shipmentDetails.firstName,
+        s_surname: order.shipmentDetails.surname,
+        s_streetName: order.shipmentDetails.streetName,
+        s_houseNumber: order.shipmentDetails.houseNumber,
+        s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
+        s_zipCode: order.shipmentDetails.zipCode,
+        s_city: order.shipmentDetails.city,
+        s_countryCode: order.shipmentDetails.countryCode,
+        email: order.shipmentDetails.email,
+        language: order.shipmentDetails.language,
+        b_salutationCode: order.billingDetails.salutation,
+        b_firstName: order.billingDetails.firstName,
+        b_surname: order.billingDetails.surname,
+        b_streetName: order.billingDetails.streetName,
+        b_houseNumber: order.billingDetails.houseNumber,
+        b_houseNumberExtended: order.billingDetails.houseNumberExtended,
+        b_zipCode: order.billingDetails.zipCode,
+        b_city: order.billingDetails.city,
+        b_countryCode: order.billingDetails.countryCode,
+        b_company: order.billingDetails.company,
+        offerId: order.orderItems[i].offer.offerId,
+        ean: ean,
+        title: order.orderItems[i].product.title,
+        img: img,
+        url: url,
+        quantity: order.orderItems[i].quantity,
+        unitPrice: order.orderItems[i].unitPrice,
+        commission: order.orderItems[i].commission,
+        latestDeliveryDate: DateTime.fromISO(
+          order.orderItems[i].fulfilment.latestDeliveryDate
+        ),
+        exactDeliveryDate: DateTime.fromISO(
+          order.orderItems[i].fulfilment.exactDeliveryDate
+        ),
+        expiryDate: DateTime.fromISO(order.orderItems[i].fulfilment.expiryDate),
+        offerCondition: order.orderItems[i].offer.offerCondition,
+        cancelRequest: order.orderItems[i].cancelRequest,
+        method: order.orderItems[i].fulfilment.method,
+        distributionParty: order.orderItems[i].fulfilment.distributionParty,
+        fulfilled: '',
+        qls_time: DateTime.fromISO(),
+      },
+    })
+  }
+
+  // await prisma.orders.create({
+  //   data: {
+  //     orderId: order.orderId,
+  //     orderItemId: order.orderItems[0].orderItemId,
+  //     account: 'NL',
+  //     dateTimeOrderPlaced: order.orderPlacedDateTime,
+  //     s_salutationCode: order.shipmentDetails.salutation,
+  //     s_firstName: order.shipmentDetails.firstName,
+  //     s_surname: order.shipmentDetails.surname,
+  //     s_streetName: order.shipmentDetails.streetName,
+  //     s_houseNumber: order.shipmentDetails.houseNumber,
+  //     s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
+  //     s_zipCode: order.shipmentDetails.zipCode,
+  //     s_city: order.shipmentDetails.city,
+  //     s_countryCode: order.shipmentDetails.countryCode,
+  //     email: order.shipmentDetails.email,
+  //     language: order.shipmentDetails.language,
+  //     b_salutationCode: order.billingDetails.salutation,
+  //     b_firstName: order.billingDetails.firstName,
+  //     b_surname: order.billingDetails.surname,
+  //     b_streetName: order.billingDetails.streetName,
+  //     b_houseNumber: order.billingDetails.houseNumber,
+  //     b_houseNumberExtended: order.billingDetails.houseNumberExtended,
+  //     b_zipCode: order.billingDetails.zipCode,
+  //     b_city: order.billingDetails.city,
+  //     b_countryCode: order.billingDetails.countryCode,
+  //     b_company: order.billingDetails.company,
+  //     offerId: order.orderItems[0].offer.offerId,
+  //     ean: ean,
+  //     title: order.orderItems[0].product.title,
+  //     img: img,
+  //     url: url,
+  //     quantity: order.orderItems[0].quantity,
+  //     unitPrice: order.orderItems[0].unitPrice,
+  //     commission: order.orderItems[0].commission,
+  //     latestDeliveryDate: DateTime.fromISO(
+  //       order.orderItems[0].fulfilment.latestDeliveryDate
+  //     ),
+  //     exactDeliveryDate: DateTime.fromISO(
+  //       order.orderItems[0].fulfilment.exactDeliveryDate
+  //     ),
+  //     expiryDate: DateTime.fromISO(order.orderItems[0].fulfilment.expiryDate),
+  //     offerCondition: order.orderItems[0].offer.offerCondition,
+  //     cancelRequest: order.orderItems[0].cancelRequest,
+  //     method: order.orderItems[0].fulfilment.method,
+  //     distributionParty: order.orderItems[0].fulfilment.distributionParty,
+  //     fulfilled: '',
+  //     qls_time: DateTime.fromISO(),
+  //   },
+  // })
 
   //console.log(order)
 }
