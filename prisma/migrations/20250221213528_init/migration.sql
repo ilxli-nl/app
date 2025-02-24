@@ -16,6 +16,15 @@ CREATE TABLE `User` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `Images` (
+    `ean` VARCHAR(191) NOT NULL,
+    `image` VARCHAR(191) NOT NULL,
+
+    UNIQUE INDEX `Images_ean_key`(`ean`),
+    PRIMARY KEY (`ean`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `Orders` (
     `orderId` VARCHAR(191) NOT NULL,
     `orderItemId` VARCHAR(191) NOT NULL,
