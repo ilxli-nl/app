@@ -62,7 +62,7 @@ export const OrderImg = async (ean) => {
   if (imgFromDB) {
     const imgFrDB = imgFromDB.image;
 
-    console.log('IMage form DB');
+    // console.log('IMage form DB');
     AddDBImage(ean, imgFrDB);
     return imgFrDB;
   } else {
@@ -92,7 +92,7 @@ export const OrderImg = async (ean) => {
 
     const img = images.assets[0].variants[1].url;
     //await sleep(500);
-    console.log('IMage form BOL');
+    // console.log('IMage form BOL');
     AddDBImage(ean, img);
 
     return img;
