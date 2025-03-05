@@ -10,7 +10,7 @@ const Img = ({ean})  => {
     return  OrderImg(ean)
   }
   const {isPending, error, data, isFetching} = useQuery({ queryKey: [`image${ean}`], queryFn: getImg });
-    if (isPending) return 'Loading...'
+    if (isPending || isFetching) return 'Loading...'
     if (error) return 'An error has occurred: ' + error.message
   //console.log(data);
   return (
