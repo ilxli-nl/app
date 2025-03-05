@@ -14,6 +14,7 @@ const Img = ({ean})  => {
     if (error) return 'An error has occurred: ' + error.message
   //console.log(data);
   return (
+    <Suspense>
           <Image
             styles='height:auto; object-center'
             src={data}
@@ -22,6 +23,7 @@ const Img = ({ean})  => {
             alt='Picture of the author'
             style={{ width: '400', height: 'auto' }}
           />
+          </Suspense>
   );
 };
 export default Img;

@@ -18,9 +18,9 @@ const Order = ({ id }) => {
   const getOrder = () => {
     return OrderBol(id)
   }
-  const myRnId = () => parseInt(Date.now() * Math.random())
+  // const myRnId = () => parseInt(Date.now() * Math.random())
 
-  const key = myRnId()
+  // const key = myRnId()
 
   const { isPending, error, data, isFetching } = useQuery({
     queryKey: [`Order${id}`],
@@ -31,7 +31,7 @@ const Order = ({ id }) => {
   const odr = data
   const odrItm = data.orderItems
 
-  console.log(key)
+  //console.log(key)
 
   return (
     <div key={odr.orderId}>
@@ -63,7 +63,8 @@ const Order = ({ id }) => {
                         : 'bg-orange-500'
                     }  p-3 rounded-md`}
                   >
-                    <Img ean={item.product.ean} />
+                    <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}>
+                    <Img ean={item.product.ean} /></Suspense>
 
                     <figcaption
                       className={`mt-2 text-l font-bold text-center text-white-900 dark:text-gray-900 ${

@@ -1,10 +1,10 @@
-'use server'
-const { DateTime } = require('luxon')
+'use server';
+const { DateTime } = require('luxon');
 
-import { prisma } from '@/prisma'
+import { prisma } from '@/prisma';
 
 export const Token = async () => {
-  const accountData = { account: 'NL' }
+  const accountData = { account: 'NL' };
 
   const response = await fetch('https://ampx.nl/token.php', {
     method: 'POST',
@@ -13,16 +13,16 @@ export const Token = async () => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(accountData),
-  })
-  const result = await response.json()
+  });
+  const result = await response.json();
 
-  return result
-}
+  return result;
+};
 
 //const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const Orders = async (page) => {
-  const token = await Token()
+  const token = await Token();
   const response = await fetch(`${process.env.BOLAPI}retailer/orders`, {
     method: 'GET',
     cache: 'no-store',
@@ -30,12 +30,12 @@ export const Orders = async (page) => {
       Accept: 'application/vnd.retailer.v10+json',
       Authorization: 'Bearer ' + token,
     },
-  })
+  });
 
-  const p = await response.json()
-  const ordersall = await p.orders
-  return ordersall
-}
+  const p = await response.json();
+  const ordersall = await p.orders;
+  return ordersall;
+};
 
 const AddDBImage = async (ean, image) => {
   await prisma.images.upsert({
@@ -48,64 +48,62 @@ const AddDBImage = async (ean, image) => {
       ean,
       image,
     },
-  })
+  });
 
-  return 'ok'
-}
+  return 'ok';
+};
 
 export const OrderImg = async (ean) => {
-  const imgFromDB = await prisma.images.findUnique({
+  const imgFromDB = await prisma.images.findFirst({
     where: {
       ean,
     },
-  })
-  if (imgFromDB !== null) {
-    const imgFrDB = imgFromDB.image
+  });
+  if (imgFromDB) {
+    const imgFrDB = imgFromDB.image;
 
-    // console.log(imgFrDB)
-
-    return imgFrDB
+    console.log('IMage form DB');
+    AddDBImage(ean, imgFrDB);
+    return imgFrDB;
   } else {
-    const token = await Token()
+    const token = await Token();
 
     const response = await fetch(
       `${process.env.BOLAPI}retailer/products/${ean}/assets`, //?page=${page}${odrId}
       {
         cache: 'force-cache',
-        next: {
-          revalidate: 9000,
-        },
+        // next: {
+        //   revalidate: 9000,
+        // },
         method: 'GET',
         headers: {
           Accept: 'application/vnd.retailer.v10+json',
           Authorization: 'Bearer ' + token,
         },
       }
-    )
+    );
 
     if (!response.ok) {
       // throw new Error('Failed to fetch order');
-      return '/no_image.jpg'
+      return '/no_image.jpg';
     }
 
-    const images = await response.json()
+    const images = await response.json();
 
-    const img = images.assets[0].variants[1].url
+    const img = images.assets[0].variants[1].url;
     //await sleep(500);
-    //console.log(JSON.stringify(images, null, '  '))
+    console.log('IMage form BOL');
+    AddDBImage(ean, img);
 
-    //const addImgToDB = AddDBImage(ean, img)
-    AddDBImage(ean, img)
-
-    return img
+    return img;
   }
-}
+};
 
-export const AddDB = async (order) => {
+export const AddDB = async (order, img) => {
   //console.dir(order.orderItems);
-  const ean = order.orderItems[0].product.ean
-  const img = await OrderImg(ean)
-  const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`
+  const ean = order.orderItems[0].product.ean;
+  // const img = await OrderImg(ean);
+  const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
 
   for (const i in order.orderItems) {
     await prisma.orders.upsert({
@@ -161,7 +159,7 @@ export const AddDB = async (order) => {
         fulfilled: '',
         qls_time: DateTime.fromISO(),
       },
-    })
+    });
   }
 
   // await prisma.orders.create({
@@ -216,10 +214,21 @@ export const AddDB = async (order) => {
   // })
 
   //console.log(order)
-}
+};
 
 export const OrderBol = async (odrId) => {
-  const token = await Token()
+  // const ordersFromDB = await prisma.orders.findFirst({
+  //   where: {
+  //     odrId,
+  //   },
+  // });
+  // if (ordersFromDB) {
+  //   //const imgFrDB = imgFromDB.image;
+
+  //   console.log(ordersFromDB);
+  // }
+
+  const token = await Token();
 
   const response = await fetch(
     `${process.env.BOLAPI}retailer/orders/${odrId}`, //?page=${page}${odrId}
@@ -234,19 +243,19 @@ export const OrderBol = async (odrId) => {
         Authorization: 'Bearer ' + token,
       },
     }
-  )
-  const order = await response.json()
+  );
+  const order = await response.json();
   //await sleep(500);
   if (!response.ok) {
-    return {}
+    return {};
   }
-  AddDB(order)
-  return order
-}
+  AddDB(order);
+  return order;
+};
 
 export const LabelQLS = async (odr) => {
   const basic =
-    'Basic ' + Buffer.from(`${process.env.CRIDIT}`).toString('base64')
+    'Basic ' + Buffer.from(`${process.env.CRIDIT}`).toString('base64');
 
   //console.log(odr);
   //const basic = 'Basic ' + `${process.env.CRIDIT}`.toString('base64');
@@ -289,9 +298,9 @@ export const LabelQLS = async (odr) => {
   // console.log(response);
 
   const lab =
-    'https://api.pakketdienstqls.nl/pdf/labels/d6658315-1992-45fb-8abe-5461c771778f.pdf?token=f546c271-10a1-49a7-a7e6-de53c9c6727a&size=a6'
+    'https://api.pakketdienstqls.nl/pdf/labels/d6658315-1992-45fb-8abe-5461c771778f.pdf?token=f546c271-10a1-49a7-a7e6-de53c9c6727a&size=a6';
 
-  return lab
+  return lab;
 
   //return 'Working'
-}
+};

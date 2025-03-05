@@ -8,7 +8,7 @@ const InfiniteOrders = ()  => {
     if (isPending || isFetching) return 'Loading...'
     if (error) return 'An error has occurred: ' + error.message
 
-  console.log(data);
+ // console.log(data);
   const myRnId = () => parseInt(Date.now() * Math.random());
   return (
     <>
