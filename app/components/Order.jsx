@@ -14,30 +14,34 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 
+
+
 const Order = ({ id }) => {
-  const getOrder = () => {
-    return OrderBol(id)
-  }
+
+  
+
   // const myRnId = () => parseInt(Date.now() * Math.random())
 
   // const key = myRnId()
 
-  const { isPending, error, data, isFetching } = useQuery({
+  const { isPending, isError, data, isFetching } = useQuery({
     queryKey: [`Order${id}`],
-    queryFn: getOrder,
+    queryFn: ({})=> OrderBol(id),
   })
+
+  
   if (isPending) return 'Loading...'
-  if (error) return 'An error has occurred: ' + error.message
+  if (isError) return 'An error has occurred: ' + isError.message
   const odr = data
   const odrItm = data.orderItems
 
-  //console.log(key)
-
   return (
+
     <div key={odr.orderId}>
       <div>
         <Card key={id} className='bg-zinc-50'>
           <CardHeader>
+
             <CardTitle className='flex justify-between'>
               <div>
                 <h1 className='text-2xl'>{odr.orderId}</h1>
@@ -63,8 +67,8 @@ const Order = ({ id }) => {
                         : 'bg-orange-500'
                     }  p-3 rounded-md`}
                   >
-                    <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}>
-                    <Img ean={item.product.ean} /></Suspense>
+                  
+                    <Img ean={item.product.ean} />
 
                     <figcaption
                       className={`mt-2 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
@@ -132,6 +136,7 @@ const Order = ({ id }) => {
         </Card>
       </div>
     </div>
+
   )
 }
 export default Order

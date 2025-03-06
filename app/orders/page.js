@@ -1,7 +1,11 @@
+//import { useState } from 'react';
 import { prisma } from '@/prisma';
 import InfiniteOrders from '../components/InfiniteOrders';
+import Paginations from '../components/pagination';
 
-const Database = async () => {
+const Database = async ({ searchParams }) => {
+  const page = await searchParams['page'];
+
   const users = await prisma.user.findMany();
 
   // console.log(users);
@@ -16,7 +20,9 @@ const Database = async () => {
           </li>
         ))}
       </ul>
-      <InfiniteOrders />
+      <Paginations />
+      <h1>{page}</h1>
+      <InfiniteOrders page={page} />
     </div>
   );
 };

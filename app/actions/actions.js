@@ -21,19 +21,24 @@ export const Token = async () => {
 
 //const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-export const Orders = async (page) => {
+export const Orders = async ({ page }) => {
   const token = await Token();
-  const response = await fetch(`${process.env.BOLAPI}retailer/orders`, {
-    method: 'GET',
-    cache: 'no-store',
-    headers: {
-      Accept: 'application/vnd.retailer.v10+json',
-      Authorization: 'Bearer ' + token,
-    },
-  });
+  const response = await fetch(
+    `${process.env.BOLAPI}retailer/orders?page=${page}`,
+    {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/vnd.retailer.v10+json',
+        Authorization: 'Bearer ' + token,
+      },
+    }
+  );
 
   const p = await response.json();
+
   const ordersall = await p.orders;
+
   return ordersall;
 };
 
@@ -105,62 +110,62 @@ export const AddDB = async (order, img) => {
   // const img = await OrderImg(ean);
   const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
 
-  for (const i in order.orderItems) {
-    await prisma.orders.upsert({
-      where: { orderItemId: order.orderItems[i].orderItemId },
-      update: {
-        cancelRequest: order.orderItems[i].cancelRequest,
-      },
-      create: {
-        orderId: order.orderId,
-        orderItemId: order.orderItems[i].orderItemId,
-        account: 'NL',
-        dateTimeOrderPlaced: order.orderPlacedDateTime,
-        s_salutationCode: order.shipmentDetails.salutation,
-        s_firstName: order.shipmentDetails.firstName,
-        s_surname: order.shipmentDetails.surname,
-        s_streetName: order.shipmentDetails.streetName,
-        s_houseNumber: order.shipmentDetails.houseNumber,
-        s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
-        s_zipCode: order.shipmentDetails.zipCode,
-        s_city: order.shipmentDetails.city,
-        s_countryCode: order.shipmentDetails.countryCode,
-        email: order.shipmentDetails.email,
-        language: order.shipmentDetails.language,
-        b_salutationCode: order.billingDetails.salutation,
-        b_firstName: order.billingDetails.firstName,
-        b_surname: order.billingDetails.surname,
-        b_streetName: order.billingDetails.streetName,
-        b_houseNumber: order.billingDetails.houseNumber,
-        b_houseNumberExtended: order.billingDetails.houseNumberExtended,
-        b_zipCode: order.billingDetails.zipCode,
-        b_city: order.billingDetails.city,
-        b_countryCode: order.billingDetails.countryCode,
-        b_company: order.billingDetails.company,
-        offerId: order.orderItems[i].offer.offerId,
-        ean: ean,
-        title: order.orderItems[i].product.title,
-        img: img,
-        url: url,
-        quantity: order.orderItems[i].quantity,
-        unitPrice: order.orderItems[i].unitPrice,
-        commission: order.orderItems[i].commission,
-        latestDeliveryDate: DateTime.fromISO(
-          order.orderItems[i].fulfilment.latestDeliveryDate
-        ),
-        exactDeliveryDate: DateTime.fromISO(
-          order.orderItems[i].fulfilment.exactDeliveryDate
-        ),
-        expiryDate: DateTime.fromISO(order.orderItems[i].fulfilment.expiryDate),
-        offerCondition: order.orderItems[i].offer.offerCondition,
-        cancelRequest: order.orderItems[i].cancelRequest,
-        method: order.orderItems[i].fulfilment.method,
-        distributionParty: order.orderItems[i].fulfilment.distributionParty,
-        fulfilled: '',
-        qls_time: DateTime.fromISO(),
-      },
-    });
-  }
+  // for (const i in order.orderItems) {
+  //   await prisma.orders.upsert({
+  //     where: { orderItemId: order.orderItems[i].orderItemId },
+  //     update: {
+  //       cancelRequest: order.orderItems[i].cancelRequest,
+  //     },
+  //     create: {
+  //       orderId: order.orderId,
+  //       orderItemId: order.orderItems[i].orderItemId,
+  //       account: 'NL',
+  //       dateTimeOrderPlaced: order.orderPlacedDateTime,
+  //       s_salutationCode: order.shipmentDetails.salutation,
+  //       s_firstName: order.shipmentDetails.firstName,
+  //       s_surname: order.shipmentDetails.surname,
+  //       s_streetName: order.shipmentDetails.streetName,
+  //       s_houseNumber: order.shipmentDetails.houseNumber,
+  //       s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
+  //       s_zipCode: order.shipmentDetails.zipCode,
+  //       s_city: order.shipmentDetails.city,
+  //       s_countryCode: order.shipmentDetails.countryCode,
+  //       email: order.shipmentDetails.email,
+  //       language: order.shipmentDetails.language,
+  //       b_salutationCode: order.billingDetails.salutation,
+  //       b_firstName: order.billingDetails.firstName,
+  //       b_surname: order.billingDetails.surname,
+  //       b_streetName: order.billingDetails.streetName,
+  //       b_houseNumber: order.billingDetails.houseNumber,
+  //       b_houseNumberExtended: order.billingDetails.houseNumberExtended,
+  //       b_zipCode: order.billingDetails.zipCode,
+  //       b_city: order.billingDetails.city,
+  //       b_countryCode: order.billingDetails.countryCode,
+  //       b_company: order.billingDetails.company,
+  //       offerId: order.orderItems[i].offer.offerId,
+  //       ean: ean,
+  //       title: order.orderItems[i].product.title,
+  //       img: img,
+  //       url: url,
+  //       quantity: order.orderItems[i].quantity,
+  //       unitPrice: order.orderItems[i].unitPrice,
+  //       commission: order.orderItems[i].commission,
+  //       latestDeliveryDate: DateTime.fromISO(
+  //         order.orderItems[i].fulfilment.latestDeliveryDate
+  //       ),
+  //       exactDeliveryDate: DateTime.fromISO(
+  //         order.orderItems[i].fulfilment.exactDeliveryDate
+  //       ),
+  //       expiryDate: DateTime.fromISO(order.orderItems[i].fulfilment.expiryDate),
+  //       offerCondition: order.orderItems[i].offer.offerCondition,
+  //       cancelRequest: order.orderItems[i].cancelRequest,
+  //       method: order.orderItems[i].fulfilment.method,
+  //       distributionParty: order.orderItems[i].fulfilment.distributionParty,
+  //       fulfilled: '',
+  //       qls_time: DateTime.fromISO(),
+  //     },
+  //   });
+  // }
 
   // await prisma.orders.create({
   //   data: {
