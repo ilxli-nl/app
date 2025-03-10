@@ -20,15 +20,15 @@ model User {
 }
 
 model Images {
-  ean          String   @id @unique
+  ean   String @id @unique
   image String
 }
 
 model Orders {
-  orderId               String    
+  orderId               String
   orderItemId           String    @id @unique
   account               String
-  dateTimeOrderPlaced   String
+  dateTimeOrderPlaced   String?
   s_salutationCode      String
   s_firstName           String
   s_surname             String
@@ -39,7 +39,7 @@ model Orders {
   s_city                String
   s_countryCode         String
   email                 String
-  language              String
+  language              String?
   b_salutationCode      String?
   b_firstName           String?
   b_surname             String?
@@ -50,14 +50,14 @@ model Orders {
   b_city                String?
   b_countryCode         String?
   b_company             String?
-  offerId               String
-  ean                   String
-  title                 String
-  img                   String
-  url                   String
-  quantity              Int
-  unitPrice             Float
-  commission            Float
+  offerId               String?
+  ean                   String?
+  title                 String    @db.VarChar(500)
+  img                   String?
+  url                   String?
+  quantity              Int?
+  unitPrice             Float?
+  commission            Float?
   latestDeliveryDate    DateTime?
   exactDeliveryDate     DateTime?
   expiryDate            DateTime?

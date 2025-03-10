@@ -108,135 +108,69 @@ export const OrderImg = async (ean) => {
   }
 };
 
-export const AddDB = async (order, img) => {
-  //console.dir(order.orderItems);
+export const AddDB = async (order) => {
+  // console.dir(order.orderItems);
   const ean = order.orderItems[0].product.ean;
-  // const img = await OrderImg(ean);
+  const img = await OrderImg(ean);
   const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
-
-  // for (const i in order.orderItems) {
-  //   await prisma.orders.upsert({
-  //     where: { orderItemId: order.orderItems[i].orderItemId },
-  //     update: {
-  //       cancelRequest: order.orderItems[i].cancelRequest,
-  //     },
-  //     create: {
-  //       orderId: order.orderId,
-  //       orderItemId: order.orderItems[i].orderItemId,
-  //       account: 'NL',
-  //       dateTimeOrderPlaced: order.orderPlacedDateTime,
-  //       s_salutationCode: order.shipmentDetails.salutation,
-  //       s_firstName: order.shipmentDetails.firstName,
-  //       s_surname: order.shipmentDetails.surname,
-  //       s_streetName: order.shipmentDetails.streetName,
-  //       s_houseNumber: order.shipmentDetails.houseNumber,
-  //       s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
-  //       s_zipCode: order.shipmentDetails.zipCode,
-  //       s_city: order.shipmentDetails.city,
-  //       s_countryCode: order.shipmentDetails.countryCode,
-  //       email: order.shipmentDetails.email,
-  //       language: order.shipmentDetails.language,
-  //       b_salutationCode: order.billingDetails.salutation,
-  //       b_firstName: order.billingDetails.firstName,
-  //       b_surname: order.billingDetails.surname,
-  //       b_streetName: order.billingDetails.streetName,
-  //       b_houseNumber: order.billingDetails.houseNumber,
-  //       b_houseNumberExtended: order.billingDetails.houseNumberExtended,
-  //       b_zipCode: order.billingDetails.zipCode,
-  //       b_city: order.billingDetails.city,
-  //       b_countryCode: order.billingDetails.countryCode,
-  //       b_company: order.billingDetails.company,
-  //       offerId: order.orderItems[i].offer.offerId,
-  //       ean: ean,
-  //       title: order.orderItems[i].product.title,
-  //       img: img,
-  //       url: url,
-  //       quantity: order.orderItems[i].quantity,
-  //       unitPrice: order.orderItems[i].unitPrice,
-  //       commission: order.orderItems[i].commission,
-  //       latestDeliveryDate: DateTime.fromISO(
-  //         order.orderItems[i].fulfilment.latestDeliveryDate
-  //       ),
-  //       exactDeliveryDate: DateTime.fromISO(
-  //         order.orderItems[i].fulfilment.exactDeliveryDate
-  //       ),
-  //       expiryDate: DateTime.fromISO(order.orderItems[i].fulfilment.expiryDate),
-  //       offerCondition: order.orderItems[i].offer.offerCondition,
-  //       cancelRequest: order.orderItems[i].cancelRequest,
-  //       method: order.orderItems[i].fulfilment.method,
-  //       distributionParty: order.orderItems[i].fulfilment.distributionParty,
-  //       fulfilled: '',
-  //       qls_time: DateTime.fromISO(),
-  //     },
-  //   });
-  // }
-
-  // await prisma.orders.create({
-  //   data: {
-  //     orderId: order.orderId,
-  //     orderItemId: order.orderItems[0].orderItemId,
-  //     account: 'NL',
-  //     dateTimeOrderPlaced: order.orderPlacedDateTime,
-  //     s_salutationCode: order.shipmentDetails.salutation,
-  //     s_firstName: order.shipmentDetails.firstName,
-  //     s_surname: order.shipmentDetails.surname,
-  //     s_streetName: order.shipmentDetails.streetName,
-  //     s_houseNumber: order.shipmentDetails.houseNumber,
-  //     s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
-  //     s_zipCode: order.shipmentDetails.zipCode,
-  //     s_city: order.shipmentDetails.city,
-  //     s_countryCode: order.shipmentDetails.countryCode,
-  //     email: order.shipmentDetails.email,
-  //     language: order.shipmentDetails.language,
-  //     b_salutationCode: order.billingDetails.salutation,
-  //     b_firstName: order.billingDetails.firstName,
-  //     b_surname: order.billingDetails.surname,
-  //     b_streetName: order.billingDetails.streetName,
-  //     b_houseNumber: order.billingDetails.houseNumber,
-  //     b_houseNumberExtended: order.billingDetails.houseNumberExtended,
-  //     b_zipCode: order.billingDetails.zipCode,
-  //     b_city: order.billingDetails.city,
-  //     b_countryCode: order.billingDetails.countryCode,
-  //     b_company: order.billingDetails.company,
-  //     offerId: order.orderItems[0].offer.offerId,
-  //     ean: ean,
-  //     title: order.orderItems[0].product.title,
-  //     img: img,
-  //     url: url,
-  //     quantity: order.orderItems[0].quantity,
-  //     unitPrice: order.orderItems[0].unitPrice,
-  //     commission: order.orderItems[0].commission,
-  //     latestDeliveryDate: DateTime.fromISO(
-  //       order.orderItems[0].fulfilment.latestDeliveryDate
-  //     ),
-  //     exactDeliveryDate: DateTime.fromISO(
-  //       order.orderItems[0].fulfilment.exactDeliveryDate
-  //     ),
-  //     expiryDate: DateTime.fromISO(order.orderItems[0].fulfilment.expiryDate),
-  //     offerCondition: order.orderItems[0].offer.offerCondition,
-  //     cancelRequest: order.orderItems[0].cancelRequest,
-  //     method: order.orderItems[0].fulfilment.method,
-  //     distributionParty: order.orderItems[0].fulfilment.distributionParty,
-  //     fulfilled: '',
-  //     qls_time: DateTime.fromISO(),
-  //   },
-  // })
-
-  //console.log(order)
+  //console.log(img);
+  for (const item of order.orderItems) {
+    //     // Change from for..in to for..of
+    console.log(item.orderItemId);
+    await prisma.orders.upsert({
+      where: { orderItemId: item.orderItemId }, // Make sure this is unique in Prisma
+      update: {}, // No update logic yet
+      create: {
+        orderId: order.orderId,
+        orderItemId: item.orderItemId,
+        account: 'NL',
+        dateTimeOrderPlaced: order.orderPlacedDateTime,
+        s_salutationCode: order.shipmentDetails.salutation,
+        s_firstName: order.shipmentDetails.firstName,
+        s_surname: order.shipmentDetails.surname,
+        s_streetName: order.shipmentDetails.streetName,
+        s_houseNumber: order.shipmentDetails.houseNumber,
+        s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
+        s_zipCode: order.shipmentDetails.zipCode,
+        s_city: order.shipmentDetails.city,
+        s_countryCode: order.shipmentDetails.countryCode,
+        email: order.shipmentDetails.email,
+        language: order.shipmentDetails.language,
+        b_salutationCode: order.billingDetails.salutation,
+        b_firstName: order.billingDetails.firstName,
+        b_surname: order.billingDetails.surname,
+        b_streetName: order.billingDetails.streetName,
+        b_houseNumber: order.billingDetails.houseNumber,
+        b_houseNumberExtended: order.billingDetails.houseNumberExtended,
+        b_zipCode: order.billingDetails.zipCode,
+        b_city: order.billingDetails.city,
+        b_countryCode: order.billingDetails.countryCode,
+        b_company: order.billingDetails.company,
+        offerId: item.offer.offerId,
+        ean: ean,
+        title: item.product.title,
+        img: img,
+        url: url,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        commission: item.commission,
+        latestDeliveryDate: DateTime.fromISO(
+          item.fulfilment.latestDeliveryDate
+        ),
+        exactDeliveryDate: DateTime.fromISO(item.fulfilment.exactDeliveryDate),
+        expiryDate: DateTime.fromISO(item.fulfilment.expiryDate),
+        offerCondition: item.offer.offerCondition,
+        cancelRequest: item.cancelRequest,
+        method: item.fulfilment.method,
+        distributionParty: item.fulfilment.distributionParty,
+        fulfilled: '',
+        qls_time: DateTime.now(), // Fixed: Use DateTime.now() instead
+      },
+    });
+  }
 };
 
 export const OrderBol = async (odrId) => {
-  // const ordersFromDB = await prisma.orders.findFirst({
-  //   where: {
-  //     odrId,
-  //   },
-  // });
-  // if (ordersFromDB) {
-  //   //const imgFrDB = imgFromDB.image;
-
-  //   console.log(ordersFromDB);
-  // }
-
   const token = await Token();
 
   const response = await fetch(
