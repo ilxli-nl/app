@@ -31,9 +31,11 @@ import {
             <Pagination>
             <PaginationContent>
                 <PaginationItem>
-                <PaginationPrevious className={page <= 1 ? "pointer-event-none opacity-50 disabled" : undefined}  onClick={() => {
-          router.push(`?page=${Number(page) - 1}`)
-        }} />
+                <PaginationPrevious className={page <= 1 ? "pointer-event-none opacity-50 disabled cursor: not-allowed" : undefined}  onClick={() => {
+                    if (page > 1) {
+                      router.push(`?page=${Number(page) - 1}`);
+                    }
+                  }} />  
                 </PaginationItem>
                 <PaginationItem>
                 <PaginationLink >{page} </PaginationLink>

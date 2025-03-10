@@ -4,7 +4,7 @@ const { DateTime } = require('luxon');
 import { prisma } from '@/prisma';
 
 export const Token = async () => {
-  const accountData = { account: 'BE' };
+  const accountData = { account: 'NL' };
 
   const response = await fetch('https://ampx.nl/token.php', {
     method: 'POST',

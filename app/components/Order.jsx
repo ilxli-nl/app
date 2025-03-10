@@ -31,7 +31,8 @@ const Order = ({ id }) => {
 
   
   if (isPending) return 'Loading...'
-  if (isError) return 'An error has occurred: ' + isError.message
+  //if (isError) return 'An error has occurred: ' + isError.message
+   if (isError) return 'No Ordders!'
   const odr = data
   const odrItm = data.orderItems
 

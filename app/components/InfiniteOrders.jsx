@@ -9,7 +9,8 @@ const InfiniteOrders = ({page})  => {
 console.log("from infinit"+page)
   const {isPending, error, data, isFetching} = useQuery({ queryKey: ['Orders', page], queryFn: ()=> Orders(page) });
     if (isPending || isFetching) return 'Loading...'
-    if (error) return 'An error has occurred: ' + error.message
+    //if (error) return 'An error has occurred: ' + error.message
+     if (error) return 'No Ordders!'
 
  // console.log(data);
   const myRnId = () => parseInt(Date.now() * Math.random());
