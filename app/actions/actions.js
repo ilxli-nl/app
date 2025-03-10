@@ -4,7 +4,7 @@ const { DateTime } = require('luxon');
 import { prisma } from '@/prisma';
 
 export const Token = async () => {
-  const accountData = { account: 'NL' };
+  const accountData = { account: 'BE' };
 
   const response = await fetch('https://ampx.nl/token.php', {
     method: 'POST',
@@ -21,8 +21,12 @@ export const Token = async () => {
 
 //const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-export const Orders = async ({ page }) => {
+export const Orders = async (page) => {
+  console.log('page :' + page);
+
   const token = await Token();
+
+  //const page = 1;
   const response = await fetch(
     `${process.env.BOLAPI}retailer/orders?page=${page}`,
     {

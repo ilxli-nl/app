@@ -21,7 +21,6 @@ const Database = async ({ searchParams }) => {
         ))}
       </ul>
       <Paginations />
-      <h1>{page}</h1>
       <InfiniteOrders page={page} />
     </div>
   );
