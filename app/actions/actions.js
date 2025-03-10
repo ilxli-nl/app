@@ -101,7 +101,7 @@ export const OrderImg = async (ean) => {
 
     const img = images.assets[0].variants[1].url;
     //await sleep(500);
-    // console.log('IMage form BOL');
+
     AddDBImage(ean, img);
 
     return img;
@@ -113,10 +113,7 @@ export const AddDB = async (order) => {
   const ean = order.orderItems[0].product.ean;
   const img = await OrderImg(ean);
   const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
-  //console.log(img);
   for (const item of order.orderItems) {
-    //     // Change from for..in to for..of
-    console.log(item.orderItemId);
     await prisma.orders.upsert({
       where: { orderItemId: item.orderItemId }, // Make sure this is unique in Prisma
       update: {}, // No update logic yet

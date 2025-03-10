@@ -6,7 +6,7 @@ import Order from './Order';
 
 const InfiniteOrders = ({page})  => {
 
-console.log("from infinit"+page)
+//console.log("from infinit"+page)
   const {isPending, error, data, isFetching} = useQuery({ queryKey: ['Orders', page], queryFn: ()=> Orders(page) });
     if (isPending || isFetching) return 'Loading...'
     //if (error) return 'An error has occurred: ' + error.message

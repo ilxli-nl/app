@@ -25,7 +25,7 @@ function LabelButtonQLS({ odr }) {
     //console.log(product_id)
  const id = await LabelQLS(odr)
 
-    console.log(odr)
+    //console.log(odr)
     setResponse(id)
   }
 
