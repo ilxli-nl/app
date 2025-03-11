@@ -108,66 +108,24 @@ export const OrderImg = async (ean) => {
   }
 };
 
-export const AddDB = async (order) => {
-  // console.dir(order.orderItems);
-  const ean = order.orderItems[0].product.ean;
-  const img = await OrderImg(ean);
-  const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
-  for (const item of order.orderItems) {
-    await prisma.orders.upsert({
-      where: { orderItemId: item.orderItemId }, // Make sure this is unique in Prisma
-      update: {}, // No update logic yet
-      create: {
-        orderId: order.orderId,
-        orderItemId: item.orderItemId,
-        account: 'NL',
-        dateTimeOrderPlaced: order.orderPlacedDateTime,
-        s_salutationCode: order.shipmentDetails.salutation,
-        s_firstName: order.shipmentDetails.firstName,
-        s_surname: order.shipmentDetails.surname,
-        s_streetName: order.shipmentDetails.streetName,
-        s_houseNumber: order.shipmentDetails.houseNumber,
-        s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
-        s_zipCode: order.shipmentDetails.zipCode,
-        s_city: order.shipmentDetails.city,
-        s_countryCode: order.shipmentDetails.countryCode,
-        email: order.shipmentDetails.email,
-        language: order.shipmentDetails.language,
-        b_salutationCode: order.billingDetails.salutation,
-        b_firstName: order.billingDetails.firstName,
-        b_surname: order.billingDetails.surname,
-        b_streetName: order.billingDetails.streetName,
-        b_houseNumber: order.billingDetails.houseNumber,
-        b_houseNumberExtended: order.billingDetails.houseNumberExtended,
-        b_zipCode: order.billingDetails.zipCode,
-        b_city: order.billingDetails.city,
-        b_countryCode: order.billingDetails.countryCode,
-        b_company: order.billingDetails.company,
-        offerId: item.offer.offerId,
-        ean: ean,
-        title: item.product.title,
-        img: img,
-        url: url,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        commission: item.commission,
-        latestDeliveryDate: DateTime.fromISO(
-          item.fulfilment.latestDeliveryDate
-        ),
-        exactDeliveryDate: DateTime.fromISO(item.fulfilment.exactDeliveryDate),
-        expiryDate: DateTime.fromISO(item.fulfilment.expiryDate),
-        offerCondition: item.offer.offerCondition,
-        cancelRequest: item.cancelRequest,
-        method: item.fulfilment.method,
-        distributionParty: item.fulfilment.distributionParty,
-        fulfilled: '',
-        qls_time: DateTime.now(), // Fixed: Use DateTime.now() instead
-      },
-    });
-  }
+export const AddDB = async (data) => {
+  await prisma.orders.upsert({
+    where: { orderItemId: data.orderItemId }, // Make sure this is unique in Prisma
+    update: {}, // No update logic yet
+    create: data,
+  });
 };
 
 export const OrderBol = async (odrId) => {
+  const odrFromDB = await prisma.orders.findMany({
+    where: {
+      orderId: odrId,
+    },
+  });
+  if (odrFromDB) {
+    //console.dir(odrFromDB);
+  }
+
   const token = await Token();
 
   const response = await fetch(
@@ -189,8 +147,119 @@ export const OrderBol = async (odrId) => {
   if (!response.ok) {
     return {};
   }
-  AddDB(order);
-  return order;
+
+  // const items = order.orderItems;
+
+  for (let item of order.orderItems) {
+    const ean = item.product.ean;
+    const img = await OrderImg(ean);
+    const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
+
+    const data = {
+      orderId: order.orderId,
+      orderItemId: item.orderItemId,
+      account: 'NL',
+      dateTimeOrderPlaced: order.orderPlacedDateTime,
+      s_salutationCode: order.shipmentDetails.salutation,
+      s_firstName: order.shipmentDetails.firstName,
+      s_surname: order.shipmentDetails.surname,
+      s_streetName: order.shipmentDetails.streetName,
+      s_houseNumber: order.shipmentDetails.houseNumber,
+      s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
+      s_zipCode: order.shipmentDetails.zipCode,
+      s_city: order.shipmentDetails.city,
+      s_countryCode: order.shipmentDetails.countryCode,
+      email: order.shipmentDetails.email,
+      language: order.shipmentDetails.language,
+      b_salutationCode: order.billingDetails.salutation,
+      b_firstName: order.billingDetails.firstName,
+      b_surname: order.billingDetails.surname,
+      b_streetName: order.billingDetails.streetName,
+      b_houseNumber: order.billingDetails.houseNumber,
+      b_houseNumberExtended: order.billingDetails.houseNumberExtended,
+      b_zipCode: order.billingDetails.zipCode,
+      b_city: order.billingDetails.city,
+      b_countryCode: order.billingDetails.countryCode,
+      b_company: order.billingDetails.company,
+      offerId: item.offer.offerId,
+      ean: ean,
+      title: item.product.title,
+      img: img,
+      url: url,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      commission: item.commission,
+      latestDeliveryDate: DateTime.fromISO(item.fulfilment.latestDeliveryDate),
+      exactDeliveryDate: DateTime.fromISO(item.fulfilment.exactDeliveryDate),
+      expiryDate: DateTime.fromISO(item.fulfilment.expiryDate),
+      offerCondition: item.offer.offerCondition,
+      cancelRequest: item.cancelRequest,
+      method: item.fulfilment.method,
+      distributionParty: item.fulfilment.distributionParty,
+      fulfilled: '',
+      qls_time: DateTime.now(), // Fixed: Use DateTime.now() instead
+    };
+    AddDB(data);
+
+    console.log(order.orderId + '|' + item.orderItemId + '|' + ean);
+  }
+
+  for (let item of order.orderItems) {
+    const ean = item.product.ean;
+    const img = await OrderImg(ean);
+    const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
+
+    const returnData = {
+      orderId: order.orderId,
+      orderItemId: item.orderItemId,
+      account: 'NL',
+      dateTimeOrderPlaced: order.orderPlacedDateTime,
+      s_salutationCode: order.shipmentDetails.salutation,
+      s_firstName: order.shipmentDetails.firstName,
+      s_surname: order.shipmentDetails.surname,
+      s_streetName: order.shipmentDetails.streetName,
+      s_houseNumber: order.shipmentDetails.houseNumber,
+      s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
+      s_zipCode: order.shipmentDetails.zipCode,
+      s_city: order.shipmentDetails.city,
+      s_countryCode: order.shipmentDetails.countryCode,
+      email: order.shipmentDetails.email,
+      language: order.shipmentDetails.language,
+      b_salutationCode: order.billingDetails.salutation,
+      b_firstName: order.billingDetails.firstName,
+      b_surname: order.billingDetails.surname,
+      b_streetName: order.billingDetails.streetName,
+      b_houseNumber: order.billingDetails.houseNumber,
+      b_houseNumberExtended: order.billingDetails.houseNumberExtended,
+      b_zipCode: order.billingDetails.zipCode,
+      b_city: order.billingDetails.city,
+      b_countryCode: order.billingDetails.countryCode,
+      b_company: order.billingDetails.company,
+      offerId: item.offer.offerId,
+      ean: ean,
+      title: item.product.title,
+      img: img,
+      url: url,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      commission: item.commission,
+      latestDeliveryDate: item.fulfilment.latestDeliveryDate,
+      exactDeliveryDate: item.fulfilment.exactDeliveryDate,
+      expiryDate: item.fulfilment.expiryDate,
+      offerCondition: item.offer.offerCondition,
+      cancelRequest: item.cancelRequest,
+      method: item.fulfilment.method,
+      distributionParty: item.fulfilment.distributionParty,
+      fulfilled: '',
+      qls_time: DateTime.now().toJSON(), // Fixed: Use DateTime.now() instead
+    };
+
+    //console.dir(data);
+
+    return returnData;
+
+    //return order;
+  }
 };
 
 export const LabelQLS = async (odr) => {

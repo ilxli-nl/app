@@ -33,6 +33,8 @@ const Order = ({ id }) => {
   if (isPending) return 'Loading...'
   if (isError) return 'An error has occurred: ' + isError.message
   // if (isError) return 'No Ordders!'
+
+console.log(data)
   const odr = data
   const odrItm = data.orderItems
 
@@ -52,82 +54,82 @@ const Order = ({ id }) => {
               </div>
             </CardTitle>
           </CardHeader>
-          {/* <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}> */}
-          {odrItm?.map((item) => (
+          {/* <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}> {data?.map((item) => ( */}
+         
             <>
               <CardContent
                 className={
-                  item.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''
+                  data.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''
                 }
               >
                 <div className='flex items-center'>
                   <figure
                     className={` ${
-                      item.fulfilment.distributionParty == 'BOL'
+                      data.method == 'BOL'
                         ? 'bg-sky-500'
                         : 'bg-orange-500'
                     }  p-3 rounded-md`}
                   >
                   
-                    <Img ean={item.product.ean} />
+                    <Img ean={data.ean} />
 
                     <figcaption
                       className={`mt-2 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
-                        item.fulfilment.latestDeliveryDate ??
+                        data.latestDeliveryDate ??
                         `bg-red-400 rounded-md`
                       }`}
                     >
-                      {item.fulfilment.exactDeliveryDate
-                        ? `Exact: ${item.fulfilment.exactDeliveryDate}`
-                        : item.fulfilment.latestDeliveryDate}
+                      {data.exactDeliveryDate
+                        ? `Exact: ${data.exactDeliveryDate}`
+                        : data.latestDeliveryDate}
                     </figcaption>
                   </figure>
 
                   <div className='w-2/3'>
                     <CardTitle className='flex items-center'>
                       <h1 className='w-4/5 p-5'>
-                        {item.product.title} <br />
+                        {data.title} <br />
                         <br />
                         <Link
-                          href={`https://www.bol.com/nl/nl/s/?searchtext=${item.product.ean}`}
+                          href={`https://www.bol.com/nl/nl/s/?searchtext=${data.ean}`}
                           target='_blank'
                         >
                           <p className='text-blue-500'>
-                            EAN {item.product.ean}
+                            EAN {data.ean}
                           </p>
                         </Link>
                       </h1>
                       <h1
                         className={` ${
-                          item.quantity >= 2 ? 'bg-red-500' : 'bg-sky-500/100'
+                          data.quantity >= 2 ? 'bg-red-500' : 'bg-sky-500/100'
                         }  p-3 text-9xl w-1/5 p-5  text-center rounded-md`}
                       >
-                        {item.quantity}
+                        {data.quantity}
                       </h1>
                     </CardTitle>
                     <CardDescription>
                       <h1>
-                        {odr.shipmentDetails.firstName}{' '}
-                        {odr.shipmentDetails.surname}
+                        {data.s_firstName}{' '}
+                        {data.s_surname}
                       </h1>
                       <p>
-                        {odr.shipmentDetails.streetName}{' '}
-                        {odr.shipmentDetails.houseNumber}{' '}
-                        {odr.shipmentDetails.houseNumberExtension}
+                        {data.s_streetName}{' '}
+                        {data.s_houseNumber}{' '}
+                        {data.s_houseNumberExtension}
                       </p>
                       <p>
-                        {odr.shipmentDetails.zipCode} {odr.shipmentDetails.city}{' '}
-                        {odr.shipmentDetails.houseNumberExtension}
+                        {data.s_zipCode} {data.s_city}{' '}
+                        {data.s_houseNumberExtension}
                       </p>
                     </CardDescription>
                   </div>
                 </div>
               </CardContent>
             </>
-          ))}
+          {/* ))} */}
 
           <CardFooter>
-            {odrItm[0]?.fulfilment.distributionParty == 'BOL' ? (
+            {odrItm?.fulfilment.distributionParty == 'BOL' ? (
               ''
             ) : (
               <LabelButtonQLS odr={odr} />

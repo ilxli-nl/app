@@ -1,7 +1,7 @@
 "use client"
 import { useQuery } from '@tanstack/react-query';
 import { Orders } from '../actions/actions';
-import Order from './Order';
+import Order from './order';
 
 
 const InfiniteOrders = ({page})  => {
