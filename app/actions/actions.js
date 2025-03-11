@@ -122,8 +122,9 @@ export const OrderBol = async (odrId) => {
       orderId: odrId,
     },
   });
-  if (odrFromDB) {
-    //console.dir(odrFromDB);
+  if (odrFromDB != '') {
+    // console.dir(odrFromDB);
+    return odrFromDB;
   }
 
   const token = await Token();
@@ -154,7 +155,7 @@ export const OrderBol = async (odrId) => {
     const ean = item.product.ean;
     const img = await OrderImg(ean);
     const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
-
+    console.log(order);
     const data = {
       orderId: order.orderId,
       orderItemId: item.orderItemId,

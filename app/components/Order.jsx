@@ -34,44 +34,44 @@ const Order = ({ id }) => {
   if (isError) return 'An error has occurred: ' + isError.message
   // if (isError) return 'No Ordders!'
 
-console.log(data)
-  const odr = data
-  const odrItm = data.orderItems
+ console.log(data)
+ // const odr = data
+  //const odrItm = data.orderItems
 
   return (
-
-    <div key={odr.orderId}>
+   
+    <div key={data.orderId}>
       <div>
         <Card key={id} className='bg-zinc-50'>
           <CardHeader>
 
             <CardTitle className='flex justify-between'>
               <div>
-                <h1 className='text-2xl'>{odr.orderId}</h1>
+                <h1 className='text-2xl'>{data[0].orderId}</h1>
               </div>
               <div>
                 <h2 className='text-5xl'>NL</h2>
               </div>
             </CardTitle>
           </CardHeader>
-          {/* <Suspense key={odr.orderId} fallback={<p>Loading feed...</p>}> {data?.map((item) => ( */}
+       { data.map((odr) => (
          
             <>
               <CardContent
                 className={
-                  data.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''
+                  odr.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''
                 }
               >
                 <div className='flex items-center'>
                   <figure
                     className={` ${
-                      data.method == 'BOL'
+                      odr.method == 'BOL'
                         ? 'bg-sky-500'
                         : 'bg-orange-500'
                     }  p-3 rounded-md`}
                   >
                   
-                    <Img ean={data.ean} />
+                    <Img ean={odr.ean} />
 
                     <figcaption
                       className={`mt-2 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
@@ -88,57 +88,62 @@ console.log(data)
                   <div className='w-2/3'>
                     <CardTitle className='flex items-center'>
                       <h1 className='w-4/5 p-5'>
-                        {data.title} <br />
+                        {odr.title} <br />
                         <br />
                         <Link
-                          href={`https://www.bol.com/nl/nl/s/?searchtext=${data.ean}`}
+                          href={`https://www.bol.com/nl/nl/s/?searchtext=${odr.ean}`}
                           target='_blank'
                         >
                           <p className='text-blue-500'>
-                            EAN {data.ean}
+                            EAN  {odr.ean}
                           </p>
                         </Link>
                       </h1>
                       <h1
                         className={` ${
-                          data.quantity >= 2 ? 'bg-red-500' : 'bg-sky-500/100'
+                          odr.quantity >= 2 ? 'bg-red-500' : 'bg-sky-500/100'
                         }  p-3 text-9xl w-1/5 p-5  text-center rounded-md`}
                       >
-                        {data.quantity}
+                        {odr.quantity}
                       </h1>
                     </CardTitle>
                     <CardDescription>
                       <h1>
-                        {data.s_firstName}{' '}
-                        {data.s_surname}
+                        {odr.s_firstName}{' '}
+                        {odr.s_surname}
                       </h1>
                       <p>
-                        {data.s_streetName}{' '}
-                        {data.s_houseNumber}{' '}
-                        {data.s_houseNumberExtension}
+                        {odr.s_streetName}{' '}
+                        {odr.s_houseNumber}{' '}
+                        {odr.s_houseNumberExtension}
                       </p>
                       <p>
-                        {data.s_zipCode} {data.s_city}{' '}
-                        {data.s_houseNumberExtension}
+                        {odr.s_zipCode} {odr.s_city}{' '}
+                        {odr.s_houseNumberExtension}
                       </p>
+                     { odr.method}
+
                     </CardDescription>
                   </div>
                 </div>
               </CardContent>
-            </>
-          {/* ))} */}
+           
 
           <CardFooter>
-            {odrItm?.fulfilment.distributionParty == 'BOL' ? (
+            {odr.distributionParty == 'BOL' ? (
               ''
             ) : (
-              <LabelButtonQLS odr={odr} />
+              <LabelButtonQLS odr={data} />
             )}
           </CardFooter>
-          {/* </Suspense> */}
+           </>
+ ))}
+         
+
         </Card>
       </div>
     </div>
+  
 
   )
 }
