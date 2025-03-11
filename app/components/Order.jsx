@@ -34,7 +34,7 @@ const Order = ({ id }) => {
   if (isError) return 'An error has occurred: ' + isError.message
   // if (isError) return 'No Ordders!'
 
- console.log(data)
+ //console.log(data)
  // const odr = data
   //const odrItm = data.orderItems
 

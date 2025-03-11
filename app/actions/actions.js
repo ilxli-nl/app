@@ -155,7 +155,7 @@ export const OrderBol = async (odrId) => {
     const ean = item.product.ean;
     const img = await OrderImg(ean);
     const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
-    console.log(order);
+    // console.log(order);
     const data = {
       orderId: order.orderId,
       orderItemId: item.orderItemId,
@@ -202,7 +202,7 @@ export const OrderBol = async (odrId) => {
     };
     AddDB(data);
 
-    console.log(order.orderId + '|' + item.orderItemId + '|' + ean);
+    //console.log(order.orderId + '|' + item.orderItemId + '|' + ean);
   }
 
   for (let item of order.orderItems) {
