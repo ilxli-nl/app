@@ -42,7 +42,15 @@ const Navbar =  () => {
                     pathname === '/properties' ? 'bg-black' : ''
                   } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
                 >
-                  Orders
+                  Orders NL
+                </Link>
+                <Link
+                  href='/orders_be?page=1'
+                  className={`${
+                    pathname === '/properties' ? 'bg-black' : ''
+                  } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
+                >
+                  Orders BE
                 </Link>
 
                 <button className={`${

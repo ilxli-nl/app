@@ -16,7 +16,7 @@ import {
 
 
 
-const Order = ({ id }) => {
+const Order = ({ id, account }) => {
 
   
 
@@ -26,17 +26,14 @@ const Order = ({ id }) => {
 
   const { isPending, isError, data, isFetching } = useQuery({
     queryKey: [`Order${id}`],
-    queryFn: ({})=> OrderBol(id),
+    queryFn: ({})=> OrderBol(id, account),
   })
 
   
   if (isPending) return 'Loading...'
   if (isError) return 'An error has occurred: ' + isError.message
-  // if (isError) return 'No Ordders!'
+  if (isError) return 'No Ordders!'
 
- //console.log(data)
- // const odr = data
-  //const odrItm = data.orderItems
 
   return (
    
@@ -47,15 +44,14 @@ const Order = ({ id }) => {
 
             <CardTitle className='flex justify-between'>
               <div>
-                <h1 className='text-2xl'>{data[0].orderId}</h1>
+                <h1 className='text-2xl'>{data[0]?.orderId}</h1>
               </div>
               <div>
-                <h2 className='text-5xl'>NL</h2>
+                <h2 className='text-5xl'>{account}</h2>
               </div>
             </CardTitle>
           </CardHeader>
-       { data.map((odr) => (
-         
+       { data?.map((odr) => (
             <>
               <CardContent
                 className={
@@ -84,7 +80,7 @@ const Order = ({ id }) => {
                         : data.latestDeliveryDate}
                     </figcaption>
                   </figure>
-
+<h1>{odr.account}</h1>
                   <div className='w-2/3'>
                     <CardTitle className='flex items-center'>
                       <h1 className='w-4/5 p-5'>

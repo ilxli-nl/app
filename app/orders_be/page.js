@@ -5,7 +5,7 @@ import Paginations from '../components/pagination';
 
 const Database = async ({ searchParams }) => {
   const page = await searchParams['page'];
-  const account = 'NL';
+  const account = 'BE';
 
   const users = await prisma.user.findMany();
 

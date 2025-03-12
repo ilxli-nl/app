@@ -3,8 +3,10 @@ const { DateTime } = require('luxon');
 
 import { prisma } from '@/prisma';
 
-export const Token = async () => {
-  const accountData = { account: 'NL' };
+const accountData = { account: 'NL' };
+
+export const Token = async (account) => {
+  const accountData = { account: account };
 
   const response = await fetch('https://ampx.nl/token.php', {
     method: 'POST',
@@ -16,15 +18,23 @@ export const Token = async () => {
   });
   const result = await response.json();
 
-  return result;
+  let dat = {};
+
+  dat.token = result;
+  dat.account = account;
+
+  console.log(dat);
+  //return result;
+  return dat;
 };
 
 //const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
-export const Orders = async (page) => {
-  console.log('page :' + page);
+export const Orders = async (page, account) => {
+  // console.log('page :' + page);
 
-  const token = await Token();
+  const tok = await Token(account);
+  const token = tok.token;
 
   //const page = 1;
   const response = await fetch(
@@ -62,7 +72,7 @@ const AddDBImage = async (ean, image) => {
   return 'ok';
 };
 
-export const OrderImg = async (ean) => {
+export const OrderImg = async (ean, account) => {
   const imgFromDB = await prisma.images.findFirst({
     where: {
       ean,
@@ -75,7 +85,8 @@ export const OrderImg = async (ean) => {
     AddDBImage(ean, imgFrDB);
     return imgFrDB;
   } else {
-    const token = await Token();
+    const tok = await Token(account);
+    const token = tok.token;
 
     const response = await fetch(
       `${process.env.BOLAPI}retailer/products/${ean}/assets`, //?page=${page}${odrId}
@@ -116,7 +127,7 @@ export const AddDB = async (data) => {
   });
 };
 
-export const OrderBol = async (odrId) => {
+export const OrderBol = async (odrId, account) => {
   const odrFromDB = await prisma.orders.findMany({
     where: {
       orderId: odrId,
@@ -127,7 +138,9 @@ export const OrderBol = async (odrId) => {
     return odrFromDB;
   }
 
-  const token = await Token();
+  // const token = await Token(accountData.account);
+  const tok = await Token(account);
+  const token = tok.token;
 
   const response = await fetch(
     `${process.env.BOLAPI}retailer/orders/${odrId}`, //?page=${page}${odrId}
@@ -153,13 +166,13 @@ export const OrderBol = async (odrId) => {
 
   for (let item of order.orderItems) {
     const ean = item.product.ean;
-    const img = await OrderImg(ean);
+    const img = await OrderImg(ean, account);
     const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
     // console.log(order);
     const data = {
       orderId: order.orderId,
       orderItemId: item.orderItemId,
-      account: 'NL',
+      account: accountData.account,
       dateTimeOrderPlaced: order.orderPlacedDateTime,
       s_salutationCode: order.shipmentDetails.salutation,
       s_firstName: order.shipmentDetails.firstName,

@@ -4,10 +4,10 @@ import { Orders } from '../actions/actions';
 import Order from './order';
 
 
-const InfiniteOrders = ({page})  => {
+const InfiniteOrders = ({page, account})  => {
 
 //console.log("from infinit"+page)
-  const {isPending, error, data, isFetching} = useQuery({ queryKey: ['Orders', page], queryFn: ()=> Orders(page) });
+  const {isPending, error, data, isFetching} = useQuery({ queryKey: ['Orders', page], queryFn: ()=> Orders(page, account) });
     if (isPending || isFetching) return 'Loading...'
     //if (error) return 'An error has occurred: ' + error.message
      if (error) return 'No Ordders!'
@@ -21,7 +21,7 @@ const InfiniteOrders = ({page})  => {
         <ul>
           {data.map((order) => (
             <li key={order.orderId}>
-              <Order id={order.orderId} />
+              <Order id={order.orderId} account={account}/>
               </li>
           ))}
         </ul>
