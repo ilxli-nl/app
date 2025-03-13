@@ -6,11 +6,8 @@ import { FaGoogle } from 'react-icons/fa'
 import logo from '@/assets/images/logo-white.png'
 import { login, logout } from '@/lib/actions/auth'
 
-const Navbar =  () => {
-
-
+const Navbar = () => {
   const pathname = usePathname()
-
 
   return (
     <nav className='bg-blue-700 border-b border-blue-500'>
@@ -52,14 +49,34 @@ const Navbar =  () => {
                 >
                   Orders BE
                 </Link>
+                <Link
+                  href='/orders_new?page=1'
+                  className={`${
+                    pathname === '/properties' ? 'bg-black' : ''
+                  } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
+                >
+                  Orders NEW
+                </Link>
 
-                <button className={`${
+                <button
+                  className={`${
                     pathname === '/properties/add' ? 'bg-black' : ''
-                  } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`} onClick={() => login()}> Sign in</button>
-                
-                <button  className={`${
+                  } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
+                  onClick={() => login()}
+                >
+                  {' '}
+                  Sign in
+                </button>
+
+                <button
+                  className={`${
                     pathname === '/properties/add' ? 'bg-black' : ''
-                  } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`} onClick={() => logout()}> Sign out</button>
+                  } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
+                  onClick={() => logout()}
+                >
+                  {' '}
+                  Sign out
+                </button>
               </div>
             </div>
           </div>
