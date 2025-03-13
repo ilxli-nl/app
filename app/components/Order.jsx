@@ -46,6 +46,7 @@ const Order = ({ id, account }) => {
             // data?.map((odr) => (
             (Array.isArray(data) ? data : []).map((odr) => (
               <>
+              <Suspense fallback={<p>Loading feed...</p>}>
                 <CardContent
                   className={
                     odr.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''
@@ -115,6 +116,7 @@ const Order = ({ id, account }) => {
                     <LabelButtonQLS odr={data} />
                   )}
                 </CardFooter>
+                </Suspense>
               </>
             ))
           }
