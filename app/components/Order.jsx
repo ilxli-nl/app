@@ -67,7 +67,7 @@ const Order = ({ id, account }) => {
                           : data.latestDeliveryDate}
                       </figcaption>
                     </figure>
-                    <h1>{odr.account}</h1>
+                    
                     <div className='w-2/3'>
                       <CardTitle className='flex items-center'>
                         <h1 className='w-4/5 p-5'>

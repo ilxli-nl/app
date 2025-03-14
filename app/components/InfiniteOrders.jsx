@@ -1,7 +1,8 @@
 "use client"
 import { useQuery } from '@tanstack/react-query';
+import { Suspense, React } from 'react'
 import { Orders } from '../actions/actions';
-import Order from './order';
+import Order from './Order';
 
 
 const InfiniteOrders = ({page, account})  => {
@@ -21,7 +22,9 @@ const InfiniteOrders = ({page, account})  => {
         <ul>
           {data.map((order) => (
             <li key={order.orderId}>
+              <Suspense fallback={<p>Loading feed...</p>}>
               <Order id={order.orderId} account={account}/>
+              </Suspense>
               </li>
           ))}
         </ul>

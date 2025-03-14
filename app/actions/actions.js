@@ -23,7 +23,7 @@ export const Token = async (account) => {
   dat.token = result;
   dat.account = account;
 
-  console.log(dat);
+  //console.log(dat);
   //return result;
   return dat;
 };
