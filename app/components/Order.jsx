@@ -15,9 +15,6 @@ import {
 } from '@/components/ui/card'
 
 const Order = ({ id, account }) => {
-  // const myRnId = () => parseInt(Date.now() * Math.random())
-
-  // const key = myRnId()
 
   const { isPending, isError, data, isFetching } = useQuery({
     queryKey: [`Order${id}`],
