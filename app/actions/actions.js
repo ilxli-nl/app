@@ -136,84 +136,96 @@ export const OrderBol = async (odrId, account) => {
   if (odrFromDB != '') {
     // console.dir(odrFromDB);
     return odrFromDB;
-  }
+  } else {
+    // const token = await Token(accountData.account);
+    const tok = await Token(account);
+    const token = tok.token;
 
-  // const token = await Token(accountData.account);
-  const tok = await Token(account);
-  const token = tok.token;
-
-  const response = await fetch(
-    `${process.env.BOLAPI}retailer/orders/${odrId}`, //?page=${page}${odrId}
-    {
-      cache: 'force-cache',
-      next: {
-        revalidate: 9000,
-      },
-      method: 'GET',
-      headers: {
-        Accept: 'application/vnd.retailer.v10+json',
-        Authorization: 'Bearer ' + token,
-      },
+    const response = await fetch(
+      `${process.env.BOLAPI}retailer/orders/${odrId}`, //?page=${page}${odrId}
+      {
+        cache: 'force-cache',
+        next: {
+          revalidate: 9000,
+        },
+        method: 'GET',
+        headers: {
+          Accept: 'application/vnd.retailer.v10+json',
+          Authorization: 'Bearer ' + token,
+        },
+      }
+    );
+    const order = await response.json();
+    //await sleep(500);
+    if (!response.ok) {
+      return {};
     }
-  );
-  const order = await response.json();
-  //await sleep(500);
-  if (!response.ok) {
-    return {};
-  }
 
-  // const items = order.orderItems;
+    // const items = order.orderItems;
 
-  for (let item of order.orderItems) {
-    const ean = item.product.ean;
-    const img = await OrderImg(ean, account);
-    const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
-    // console.log(order);
-    const data = {
-      orderId: order.orderId,
-      orderItemId: item.orderItemId,
-      account: accountData.account,
-      dateTimeOrderPlaced: order.orderPlacedDateTime,
-      s_salutationCode: order.shipmentDetails.salutation,
-      s_firstName: order.shipmentDetails.firstName,
-      s_surname: order.shipmentDetails.surname,
-      s_streetName: order.shipmentDetails.streetName,
-      s_houseNumber: order.shipmentDetails.houseNumber,
-      s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
-      s_zipCode: order.shipmentDetails.zipCode,
-      s_city: order.shipmentDetails.city,
-      s_countryCode: order.shipmentDetails.countryCode,
-      email: order.shipmentDetails.email,
-      language: order.shipmentDetails.language,
-      b_salutationCode: order.billingDetails.salutation,
-      b_firstName: order.billingDetails.firstName,
-      b_surname: order.billingDetails.surname,
-      b_streetName: order.billingDetails.streetName,
-      b_houseNumber: order.billingDetails.houseNumber,
-      b_houseNumberExtended: order.billingDetails.houseNumberExtended,
-      b_zipCode: order.billingDetails.zipCode,
-      b_city: order.billingDetails.city,
-      b_countryCode: order.billingDetails.countryCode,
-      b_company: order.billingDetails.company,
-      offerId: item.offer.offerId,
-      ean: ean,
-      title: item.product.title,
-      img: img,
-      url: url,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      commission: item.commission,
-      latestDeliveryDate: DateTime.fromISO(item.fulfilment.latestDeliveryDate),
-      exactDeliveryDate: DateTime.fromISO(item.fulfilment.exactDeliveryDate),
-      expiryDate: DateTime.fromISO(item.fulfilment.expiryDate),
-      offerCondition: item.offer.offerCondition,
-      cancelRequest: item.cancelRequest,
-      method: item.fulfilment.method,
-      distributionParty: item.fulfilment.distributionParty,
-      fulfilled: '',
-      qls_time: DateTime.now(), // Fixed: Use DateTime.now() instead
-    };
-    AddDB(data);
+    for (let item of order.orderItems) {
+      const ean = item.product.ean;
+      const img = await OrderImg(ean, account);
+      const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
+      // console.log(order);
+      const data = {
+        orderId: order.orderId,
+        orderItemId: item.orderItemId,
+        account: accountData.account,
+        dateTimeOrderPlaced: order.orderPlacedDateTime,
+        s_salutationCode: order.shipmentDetails.salutation,
+        s_firstName: order.shipmentDetails.firstName,
+        s_surname: order.shipmentDetails.surname,
+        s_streetName: order.shipmentDetails.streetName,
+        s_houseNumber: order.shipmentDetails.houseNumber,
+        s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
+        s_zipCode: order.shipmentDetails.zipCode,
+        s_city: order.shipmentDetails.city,
+        s_countryCode: order.shipmentDetails.countryCode,
+        email: order.shipmentDetails.email,
+        language: order.shipmentDetails.language,
+        b_salutationCode: order.billingDetails.salutation,
+        b_firstName: order.billingDetails.firstName,
+        b_surname: order.billingDetails.surname,
+        b_streetName: order.billingDetails.streetName,
+        b_houseNumber: order.billingDetails.houseNumber,
+        b_houseNumberExtended: order.billingDetails.houseNumberExtended,
+        b_zipCode: order.billingDetails.zipCode,
+        b_city: order.billingDetails.city,
+        b_countryCode: order.billingDetails.countryCode,
+        b_company: order.billingDetails.company,
+        offerId: item.offer.offerId,
+        ean: ean,
+        title: item.product.title,
+        img: img,
+        url: url,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        commission: item.commission,
+        latestDeliveryDate: DateTime.fromISO(
+          item.fulfilment.latestDeliveryDate
+        ),
+        exactDeliveryDate: DateTime.fromISO(item.fulfilment.exactDeliveryDate),
+        expiryDate: DateTime.fromISO(item.fulfilment.expiryDate),
+        offerCondition: item.offer.offerCondition,
+        cancelRequest: item.cancelRequest,
+        method: item.fulfilment.method,
+        distributionParty: item.fulfilment.distributionParty,
+        fulfilled: '',
+        qls_time: DateTime.now(), // Fixed: Use DateTime.now() instead
+      };
+      AddDB(data);
+
+      const odrFromDB2 = await prisma.orders.findMany({
+        where: {
+          orderId: odrId,
+        },
+      });
+      if (odrFromDB2 != '') {
+        // console.dir(odrFromDB);
+        return odrFromDB2;
+      }
+    }
 
     //console.log(order.orderId + '|' + item.orderItemId + '|' + ean);
   }
