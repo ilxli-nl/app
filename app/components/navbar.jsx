@@ -6,7 +6,7 @@ import { FaGoogle } from 'react-icons/fa'
 import logo from '@/assets/images/logo-white.png'
 import { login, logout } from '@/lib/actions/auth'
 
-const Navbar = async () => {
+const Navbar = () => {
 
   const pathname = usePathname()
   return (
