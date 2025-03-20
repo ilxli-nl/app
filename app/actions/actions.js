@@ -72,51 +72,46 @@ const AddDBImage = async (ean, image) => {
   return 'ok';
 };
 
+const imageCache = new Map(); // Simple in-memory cache
+
 export const OrderImg = async (ean, account) => {
-  const imgFromDB = await prisma.images.findFirst({
-    where: {
-      ean,
-    },
-  });
-  if (imgFromDB) {
-    const imgFrDB = imgFromDB.image;
-
-    // console.log('IMage form DB');
-    AddDBImage(ean, imgFrDB);
-    return imgFrDB;
-  } else {
-    const tok = await Token(account);
-    const token = tok.token;
-
-    const response = await fetch(
-      `${process.env.BOLAPI}retailer/products/${ean}/assets`, //?page=${page}${odrId}
-      {
-        cache: 'force-cache',
-        // next: {
-        //   revalidate: 9000,
-        // },
-        method: 'GET',
-        headers: {
-          Accept: 'application/vnd.retailer.v10+json',
-          Authorization: 'Bearer ' + token,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      // throw new Error('Failed to fetch order');
-      return '/no_image.jpg';
-    }
-
-    const images = await response.json();
-
-    const img = images.assets[0].variants[1].url;
-    //await sleep(500);
-
-    AddDBImage(ean, img);
-
-    return img;
+  if (imageCache.has(ean)) {
+    return imageCache.get(ean);
   }
+
+  const imgFromDB = await prisma.images.findFirst({ where: { ean } });
+
+  if (imgFromDB) {
+    imageCache.set(ean, imgFromDB.image);
+    return imgFromDB.image;
+  }
+
+  const tok = await Token(account);
+  const token = tok.token;
+
+  const response = await fetch(
+    `${process.env.BOLAPI}retailer/products/${ean}/assets`,
+    {
+      cache: 'force-cache',
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.retailer.v10+json',
+        Authorization: 'Bearer ' + token,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    return '/no_image.jpg';
+  }
+
+  const images = await response.json();
+  const img = images.assets[0].variants[1].url;
+
+  await AddDBImage(ean, img);
+  imageCache.set(ean, img);
+
+  return img;
 };
 
 export const AddDB = async (data) => {
@@ -129,49 +124,45 @@ export const AddDB = async (data) => {
 
 export const OrderBol = async (odrId, account) => {
   const odrFromDB = await prisma.orders.findMany({
-    where: {
-      orderId: odrId,
-    },
+    where: { orderId: odrId },
   });
-  if (odrFromDB != '') {
-    // console.dir(odrFromDB);
+
+  if (odrFromDB.length > 0) {
     return odrFromDB;
-  } else {
-    // const token = await Token(accountData.account);
-    const tok = await Token(account);
-    const token = tok.token;
+  }
 
-    const response = await fetch(
-      `${process.env.BOLAPI}retailer/orders/${odrId}`, //?page=${page}${odrId}
-      {
-        cache: 'force-cache',
-        next: {
-          revalidate: 9000,
-        },
-        method: 'GET',
-        headers: {
-          Accept: 'application/vnd.retailer.v10+json',
-          Authorization: 'Bearer ' + token,
-        },
-      }
-    );
-    const order = await response.json();
-    //await sleep(500);
-    if (!response.ok) {
-      return {};
+  const tok = await Token(account);
+  const token = tok.token;
+
+  const response = await fetch(
+    `${process.env.BOLAPI}retailer/orders/${odrId}`,
+    {
+      cache: 'force-cache',
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.retailer.v10+json',
+        Authorization: 'Bearer ' + token,
+      },
     }
+  );
 
-    // const items = order.orderItems;
+  if (!response.ok) {
+    return {};
+  }
 
-    for (let item of order.orderItems) {
+  const order = await response.json();
+
+  // Process order items in parallel
+  const processedItems = await Promise.all(
+    order.orderItems.map(async (item) => {
       const ean = item.product.ean;
       const img = await OrderImg(ean, account);
       const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
-      // console.log(order);
-      const data = {
+
+      return {
         orderId: order.orderId,
         orderItemId: item.orderItemId,
-        account: accountData.account,
+        account: account,
         dateTimeOrderPlaced: order.orderPlacedDateTime,
         s_salutationCode: order.shipmentDetails.salutation,
         s_firstName: order.shipmentDetails.firstName,
@@ -212,80 +203,23 @@ export const OrderBol = async (odrId, account) => {
         method: item.fulfilment.method,
         distributionParty: item.fulfilment.distributionParty,
         fulfilled: '',
-        qls_time: DateTime.now(), // Fixed: Use DateTime.now() instead
+        qls_time: DateTime.now(),
       };
-      AddDB(data);
+    })
+  );
 
-      const odrFromDB2 = await prisma.orders.findMany({
-        where: {
-          orderId: odrId,
-        },
-      });
-      if (odrFromDB2 != '') {
-        // console.dir(odrFromDB);
-        return odrFromDB2;
-      }
-    }
+  // Batch insert into database
+  await prisma.$transaction(
+    processedItems.map((data) =>
+      prisma.orders.upsert({
+        where: { orderItemId: data.orderItemId },
+        update: {},
+        create: data,
+      })
+    )
+  );
 
-    //console.log(order.orderId + '|' + item.orderItemId + '|' + ean);
-  }
-
-  for (let item of order.orderItems) {
-    const ean = item.product.ean;
-    const img = await OrderImg(ean);
-    const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
-
-    const returnData = {
-      orderId: order.orderId,
-      orderItemId: item.orderItemId,
-      account: 'NL',
-      dateTimeOrderPlaced: order.orderPlacedDateTime,
-      s_salutationCode: order.shipmentDetails.salutation,
-      s_firstName: order.shipmentDetails.firstName,
-      s_surname: order.shipmentDetails.surname,
-      s_streetName: order.shipmentDetails.streetName,
-      s_houseNumber: order.shipmentDetails.houseNumber,
-      s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
-      s_zipCode: order.shipmentDetails.zipCode,
-      s_city: order.shipmentDetails.city,
-      s_countryCode: order.shipmentDetails.countryCode,
-      email: order.shipmentDetails.email,
-      language: order.shipmentDetails.language,
-      b_salutationCode: order.billingDetails.salutation,
-      b_firstName: order.billingDetails.firstName,
-      b_surname: order.billingDetails.surname,
-      b_streetName: order.billingDetails.streetName,
-      b_houseNumber: order.billingDetails.houseNumber,
-      b_houseNumberExtended: order.billingDetails.houseNumberExtended,
-      b_zipCode: order.billingDetails.zipCode,
-      b_city: order.billingDetails.city,
-      b_countryCode: order.billingDetails.countryCode,
-      b_company: order.billingDetails.company,
-      offerId: item.offer.offerId,
-      ean: ean,
-      title: item.product.title,
-      img: img,
-      url: url,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      commission: item.commission,
-      latestDeliveryDate: item.fulfilment.latestDeliveryDate,
-      exactDeliveryDate: item.fulfilment.exactDeliveryDate,
-      expiryDate: item.fulfilment.expiryDate,
-      offerCondition: item.offer.offerCondition,
-      cancelRequest: item.cancelRequest,
-      method: item.fulfilment.method,
-      distributionParty: item.fulfilment.distributionParty,
-      fulfilled: '',
-      qls_time: DateTime.now().toJSON(), // Fixed: Use DateTime.now() instead
-    };
-
-    //console.dir(data);
-
-    return returnData;
-
-    //return order;
-  }
+  return processedItems;
 };
 
 export const LabelQLS = async (odr) => {
