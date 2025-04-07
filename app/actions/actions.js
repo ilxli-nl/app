@@ -273,36 +273,3 @@ export const LabelQLS = async (odr) => {
 
   //return 'Working'
 };
-
-export async function searchOrders({ query } = {}) {
-  // Validate input
-  if (!query || typeof query !== 'string') {
-    return [];
-  }
-
-  const searchTerm = query.trim();
-  if (searchTerm === '') return [];
-
-  try {
-    return await prisma.orders.findMany({
-      where: {
-        OR: [
-          { orderId: { contains: searchTerm, mode: 'insensitive' } },
-          { ean: { contains: searchTerm, mode: 'insensitive' } },
-          { title: { contains: searchTerm, mode: 'insensitive' } },
-          { s_firstName: { contains: searchTerm, mode: 'insensitive' } },
-          { s_surname: { contains: searchTerm, mode: 'insensitive' } },
-        ],
-      },
-      orderBy: { dateTimeOrderPlaced: 'desc' },
-      take: 50,
-    });
-  } catch (error) {
-    console.error('Search failed:', {
-      error: error.message,
-      query: searchTerm,
-      timestamp: new Date().toISOString(),
-    });
-    return [];
-  }
-}
