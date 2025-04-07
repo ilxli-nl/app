@@ -1,9 +1,58 @@
 'use server';
 const { DateTime } = require('luxon');
-
 import { prisma } from '@/prisma';
 
 const accountData = { account: 'NL' };
+
+// Helper functions
+function extractShipmentDetails(details) {
+  return {
+    s_salutationCode: details?.salutation || null,
+    s_firstName: details?.firstName || '',
+    s_surname: details?.surname || '',
+    s_streetName: details?.streetName || '',
+    s_houseNumber: details?.houseNumber || '',
+    s_houseNumberExtended: details?.houseNumberExtended || null,
+    s_zipCode: details?.zipCode || '',
+    s_city: details?.city || '',
+    s_countryCode: details?.countryCode || '',
+    email: details?.email || '',
+    language: details?.language || '',
+  };
+}
+
+function extractBillingDetails(details) {
+  return {
+    b_salutationCode: details?.salutation || null,
+    b_firstName: details?.firstName || '',
+    b_surname: details?.surname || '',
+    b_streetName: details?.streetName || '',
+    b_houseNumber: details?.houseNumber || '',
+    b_houseNumberExtended: details?.houseNumberExtended || null,
+    b_zipCode: details?.zipCode || '',
+    b_city: details?.city || '',
+    b_countryCode: details?.countryCode || '',
+    b_company: details?.company || null,
+  };
+}
+
+function extractFulfillmentDetails(fulfilment) {
+  return {
+    latestDeliveryDate: fulfilment?.latestDeliveryDate
+      ? DateTime.fromISO(fulfilment.latestDeliveryDate).toISO()
+      : null,
+    exactDeliveryDate: fulfilment?.exactDeliveryDate
+      ? DateTime.fromISO(fulfilment.exactDeliveryDate).toISO()
+      : null,
+    expiryDate: fulfilment?.expiryDate
+      ? DateTime.fromISO(fulfilment.expiryDate).toISO()
+      : null,
+    offerCondition: fulfilment?.offerCondition || null,
+    cancelRequest: fulfilment?.cancelRequest ? 'true' : 'false',
+    method: fulfilment?.method || '',
+    distributionParty: fulfilment?.distributionParty || '',
+  };
+}
 
 export const Token = async (account) => {
   const accountData = { account: account };
@@ -18,25 +67,16 @@ export const Token = async (account) => {
   });
   const result = await response.json();
 
-  let dat = {};
-
-  dat.token = result;
-  dat.account = account;
-
-  //console.log(dat);
-  //return result;
-  return dat;
+  return {
+    token: result,
+    account: account,
+  };
 };
 
-//const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-
 export const Orders = async (page, account) => {
-  // console.log('page :' + page);
-
   const tok = await Token(account);
   const token = tok.token;
 
-  //const page = 1;
   const response = await fetch(
     `${process.env.BOLAPI}retailer/orders?page=${page}`,
     {
@@ -50,29 +90,19 @@ export const Orders = async (page, account) => {
   );
 
   const p = await response.json();
-
-  const ordersall = await p.orders;
-
-  return ordersall;
+  return p.orders || [];
 };
 
 const AddDBImage = async (ean, image) => {
   await prisma.images.upsert({
     where: { ean },
-    update: {
-      ean,
-      image,
-    },
-    create: {
-      ean,
-      image,
-    },
+    update: { ean, image },
+    create: { ean, image },
   });
-
   return 'ok';
 };
 
-const imageCache = new Map(); // Simple in-memory cache
+const imageCache = new Map();
 
 export const OrderImg = async (ean, account) => {
   if (imageCache.has(ean)) {
@@ -106,7 +136,7 @@ export const OrderImg = async (ean, account) => {
   }
 
   const images = await response.json();
-  const img = images.assets[0].variants[1].url;
+  const img = images.assets[0]?.variants[1]?.url || '/no_image.jpg';
 
   await AddDBImage(ean, img);
   imageCache.set(ean, img);
@@ -116,160 +146,134 @@ export const OrderImg = async (ean, account) => {
 
 export const AddDB = async (data) => {
   await prisma.orders.upsert({
-    where: { orderItemId: data.orderItemId }, // Make sure this is unique in Prisma
-    update: {}, // No update logic yet
+    where: { orderItemId: data.orderItemId },
+    update: {},
     create: data,
   });
 };
 
 export const OrderBol = async (odrId, account) => {
-  const odrFromDB = await prisma.orders.findMany({
-    where: { orderId: odrId },
-  });
-
-  if (odrFromDB.length > 0) {
-    return odrFromDB;
+  if (!odrId || typeof odrId !== 'string') {
+    throw new Error('Invalid order ID');
+  }
+  if (!account || typeof account !== 'string') {
+    throw new Error('Invalid account');
   }
 
-  const tok = await Token(account);
-  const token = tok.token;
+  try {
+    const existingOrders = await prisma.orders.findMany({
+      where: { orderId: odrId },
+    });
 
-  const response = await fetch(
-    `${process.env.BOLAPI}retailer/orders/${odrId}`,
-    {
-      cache: 'force-cache',
-      method: 'GET',
-      headers: {
-        Accept: 'application/vnd.retailer.v10+json',
-        Authorization: 'Bearer ' + token,
-      },
+    if (existingOrders.length > 0) {
+      return existingOrders;
     }
-  );
 
-  if (!response.ok) {
-    return {};
-  }
+    const { token } = await Token(account);
+    if (!token) {
+      throw new Error('Failed to get authentication token');
+    }
 
-  const order = await response.json();
+    const response = await fetch(
+      `${process.env.BOLAPI}retailer/orders/${odrId}`,
+      {
+        cache: 'force-cache',
+        method: 'GET',
+        headers: {
+          Accept: 'application/vnd.retailer.v10+json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-  // Process order items in parallel
-  const processedItems = await Promise.all(
-    order.orderItems.map(async (item) => {
-      const ean = item.product.ean;
-      const img = await OrderImg(ean, account);
-      const url = `https://www.bol.com/nl/nl/s/?searchtext=${ean}`;
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
 
-      return {
-        orderId: order.orderId,
-        orderItemId: item.orderItemId,
-        account: account,
-        dateTimeOrderPlaced: order.orderPlacedDateTime,
-        s_salutationCode: order.shipmentDetails.salutation,
-        s_firstName: order.shipmentDetails.firstName,
-        s_surname: order.shipmentDetails.surname,
-        s_streetName: order.shipmentDetails.streetName,
-        s_houseNumber: order.shipmentDetails.houseNumber,
-        s_houseNumberExtended: order.shipmentDetails.houseNumberExtended,
-        s_zipCode: order.shipmentDetails.zipCode,
-        s_city: order.shipmentDetails.city,
-        s_countryCode: order.shipmentDetails.countryCode,
-        email: order.shipmentDetails.email,
-        language: order.shipmentDetails.language,
-        b_salutationCode: order.billingDetails.salutation,
-        b_firstName: order.billingDetails.firstName,
-        b_surname: order.billingDetails.surname,
-        b_streetName: order.billingDetails.streetName,
-        b_houseNumber: order.billingDetails.houseNumber,
-        b_houseNumberExtended: order.billingDetails.houseNumberExtended,
-        b_zipCode: order.billingDetails.zipCode,
-        b_city: order.billingDetails.city,
-        b_countryCode: order.billingDetails.countryCode,
-        b_company: order.billingDetails.company,
-        offerId: item.offer.offerId,
-        ean: ean,
-        title: item.product.title,
-        img: img,
-        url: url,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        commission: item.commission,
-        latestDeliveryDate: DateTime.fromISO(
-          item.fulfilment.latestDeliveryDate
-        ),
-        exactDeliveryDate: DateTime.fromISO(item.fulfilment.exactDeliveryDate),
-        expiryDate: DateTime.fromISO(item.fulfilment.expiryDate),
-        offerCondition: item.offer.offerCondition,
-        cancelRequest: item.cancelRequest,
-        method: item.fulfilment.method,
-        distributionParty: item.fulfilment.distributionParty,
-        fulfilled: '',
-        qls_time: DateTime.now(),
-      };
-    })
-  );
+    const order = await response.json();
+    if (!order?.orderItems?.length) {
+      return [];
+    }
 
-  // Batch insert into database
-  await prisma.$transaction(
-    processedItems.map((data) =>
-      prisma.orders.upsert({
-        where: { orderItemId: data.orderItemId },
-        update: {},
-        create: data,
+    const processingResults = await Promise.allSettled(
+      order.orderItems.map(async (item) => {
+        try {
+          const ean = item.product?.ean;
+          if (!ean) {
+            console.warn('Missing EAN for item:', item.orderItemId);
+            return null;
+          }
+
+          const [img] = await Promise.all([
+            OrderImg(ean, account).catch((e) => {
+              console.error(`Failed to get image for EAN ${ean}:`, e);
+              return '/no_image.jpg';
+            }),
+          ]);
+
+          const orderData = {
+            orderId: order.orderId,
+            orderItemId: item.orderItemId,
+            account: account,
+            dateTimeOrderPlaced: order.orderPlacedDateTime,
+            ...extractShipmentDetails(order.shipmentDetails),
+            ...extractBillingDetails(order.billingDetails),
+            offerId: item.offer?.offerId || '',
+            ean: ean,
+            title: item.product?.title || 'Unknown Product',
+            img: img,
+            url: `https://www.bol.com/nl/nl/s/?searchtext=${ean}`,
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice || 0,
+            commission: item.commission || 0,
+            ...extractFulfillmentDetails(item.fulfilment),
+            fulfilled: '',
+            qls_time: DateTime.now().toISO(),
+          };
+
+          return orderData;
+        } catch (itemError) {
+          console.error(
+            `Error processing item ${item.orderItemId}:`,
+            itemError
+          );
+          return null;
+        }
       })
-    )
-  );
+    );
 
-  return processedItems;
+    const validItems = processingResults
+      .filter((result) => result.status === 'fulfilled' && result.value)
+      .map((result) => result.value);
+
+    if (validItems.length > 0) {
+      await prisma.$transaction(
+        validItems.map((data) =>
+          prisma.orders.upsert({
+            where: { orderItemId: data.orderItemId },
+            update: {},
+            create: data,
+          })
+        )
+      );
+    }
+
+    return validItems;
+  } catch (error) {
+    console.error('Error in OrderBol:', {
+      error: error.message,
+      orderId: odrId,
+      account,
+      timestamp: new Date().toISOString(),
+    });
+    throw error;
+  }
 };
 
 export const LabelQLS = async (odr) => {
   const basic =
     'Basic ' + Buffer.from(`${process.env.CRIDIT}`).toString('base64');
-
-  //console.log(odr);
-  //const basic = 'Basic ' + `${process.env.CRIDIT}`.toString('base64');
-
-  // const qlsLabel = await fetch(
-  //   `https://api.pakketdienstqls.nl/companies/${process.env.COMPANIES}/shipments`,
-  //   {
-  //     method: 'POST',
-  //     headers: {
-  //       Authorization: basic,
-  //       accept: '*/*',
-  //       'Content-Type': 'application/json',
-  //     },
-  //     body: JSON.stringify({
-  //       weight: 100,
-  //       reference: '123123213213',
-  //       brand_id: '4ca8fd28-8a90-4b90-8f27-27f5bc74df5b',
-  //       product_id: 1,
-  //       product_combination_id: 1,
-  //       cod_amount: 0,
-  //       piece_total: 1,
-  //       receiver_contact: {
-  //         name: 'someName',
-  //         companyname: '',
-  //         street: 'SomeStreet',
-  //         housenumber: '64',
-  //         address_line: '',
-  //         address2: '',
-  //         postalcode: '3047AH',
-  //         locality: 'Rotterdam',
-  //         country: 'NL',
-  //         email: 'Some@email.com',
-  //       },
-  //     }),
-  //   }
-  // )
-  // const response = await qlsLabel.json()
-
-  // const label = response.data.labels.a6;
-  // console.log(response);
-
   const lab =
     'https://api.pakketdienstqls.nl/pdf/labels/d6658315-1992-45fb-8abe-5461c771778f.pdf?token=f546c271-10a1-49a7-a7e6-de53c9c6727a&size=a6';
-
   return lab;
-
-  //return 'Working'
 };
