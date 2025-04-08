@@ -1,6 +1,7 @@
 // app/search/page.js
 import { SearchForm } from './SearchForm';
 import { searchOrders } from '../actions/search';
+import OrderDone from '../components/Order_done';
 
 export default async function SearchPage({ searchParams }) {
   const query = (await searchParams.q) || '';
@@ -16,13 +17,10 @@ export default async function SearchPage({ searchParams }) {
           {results.length === 0 ? (
             <p className='text-gray-500'>No orders found</p>
           ) : (
-            <ul className='space-y-4'>
+            <ul>
               {results.map((order) => (
-                <li key={order.id} className='border p-4 rounded-lg'>
-                  <h3 className='font-bold'>Order #{order.orderId}</h3>
-                  <p className='text-gray-600'>{order.title}</p>
-                  <p>Customer: {order.customerName}</p>
-                  <p>Status: {order.status}</p>
+                <li key={order.orderId}>
+                  <OrderDone data={order}></OrderDone>
                 </li>
               ))}
             </ul>
