@@ -7,11 +7,11 @@ export default async function SearchPage({ searchParams }) {
   const query = (await searchParams.q) || '';
   const results = query ? await searchOrders(query) : [];
   return (
-    <div className='p-4'>
+    <div className='items-center justify-items-center'>
       <h1 className='text-2xl font-bold mb-4'>Order Search</h1>
       <SearchForm initialQuery={query} />
       {query && (
-        <div className='mt-8'>
+        <div className='bg-slate-300 grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 sm:p-20 font-[family-name:var(--font-geist-sans)]'>
           <h2 className='text-xl font-semibold mb-4'>Results for "{query}"</h2>
 
           {results.length === 0 ? (
