@@ -1,52 +1,70 @@
 'use server';
 
 export async function createBpostLabel() {
-  const apiUrl = 'https://api-parcel.bpost.be/services/shm/orders';
-  const auth = Buffer.from(
-    `${process.env.BPOST_ACCOUNT_ID}:${process.env.BPOST_API_KEY}`
-  ).toString('base64');
+  // Configuration - match your PHP setup exactly
+  const config = {
+    accountId: process.env.BPOST_ACCOUNT_ID || '033209',
+    apiKey: process.env.BPOST_API_KEY || 'ioNigHtWiTatOrTHRemE',
+    // Note the trailing slash matches your PHP client
+    apiUrl:
+      process.env.BPOST_API_URL || 'https://api-parcel.bpost.be/services/shm/',
+  };
 
-  const payload = {
-    orderReference: `ORDER_${Date.now()}`,
-    sender: {
-      name: 'Your Shop',
-      address: {
-        street: 'Shop Street 1',
-        postalCode: '1000',
-        locality: 'Brussels',
-        country: 'BE',
-      },
-    },
-    recipient: {
-      name: 'Customer Name',
-      address: {
-        street: 'Customer Street 2',
-        postalCode: '2000',
-        locality: 'Antwerp',
-        country: 'BE',
-      },
-    },
-    parcels: [
+  // Payload matching your PHP structure
+  const orderData = {
+    reference: `ref_wwerwerwerAAAA`,
+    lines: [{ text: 'Article description', numberOfItems: 1 }],
+    boxes: [
       {
-        weight: 750, // 750 grams
+        nationalBox: {
+          product: 'bpack 24h Pro',
+          options: [{ type: 'additionalInsurance', value: 2 }],
+          receiver: {
+            name: 'Alma van Appel',
+            address: {
+              streetName: 'Rue du Grand Duc',
+              number: '13',
+              postalCode: '1040',
+              locality: 'Etterbeek',
+              countryCode: 'BE',
+            },
+            emailAddress: 'alma@antidot.com',
+            phoneNumber: '+32 2 641 13 90',
+          },
+        },
       },
     ],
   };
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${auth}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const auth = Buffer.from(`${config.accountId}:${config.apiKey}`).toString(
+      'base64'
+    );
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`bpost error: ${error.message || 'Unknown error'}`);
+    // Correct endpoint construction (matches PHP client)
+    const response = await fetch(`${config.apiUrl}orders`, {
+      // Append 'orders' to base URL
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Label creation failed:', {
+      error: error.message,
+      endpoint: config.apiUrl,
+      timestamp: new Date().toISOString(),
+    });
+    throw new Error(`Label creation failed: ${error.message}`);
   }
-
-  return await response.json();
 }
