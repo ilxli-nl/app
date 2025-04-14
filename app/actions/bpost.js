@@ -1,24 +1,33 @@
 'use server';
 
-export async function createBpostLabel() {
-  // Configuration - match your PHP setup exactly
-  const config = {
-    accountId: process.env.BPOST_ACCOUNT_ID || '033209',
-    apiKey: process.env.BPOST_API_KEY || 'ioNigHtWiTatOrTHRemE',
-    // Note the trailing slash matches your PHP client
-    apiUrl:
-      process.env.BPOST_API_URL || 'https://api-parcel.bpost.be/services/shm/',
-  };
+export async function createBpostOrder() {
+  const apiUrl = 'https://api-parcel.bpost.be/services/shm/orders';
+  const accountId = '033209';
+  const apiKey = 'ioNigHtWiTatOrTHRemE';
+  const auth = Buffer.from(`${accountId}:${apiKey}`).toString('base64');
 
-  // Payload matching your PHP structure
   const orderData = {
-    reference: `ref_wwerwerwerAAAA`,
-    lines: [{ text: 'Article description', numberOfItems: 1 }],
+    reference: `ref_${Date.now()}`,
+    lines: [
+      {
+        text: 'Article description',
+        numberOfItems: 1,
+      },
+      {
+        text: 'Some others articles',
+        numberOfItems: 5,
+      },
+    ],
     boxes: [
       {
         nationalBox: {
           product: 'bpack 24h Pro',
-          options: [{ type: 'additionalInsurance', value: 2 }],
+          options: [
+            {
+              type: 'additionalInsurance',
+              value: 2, // 2500 euros insurance
+            },
+          ],
           receiver: {
             name: 'Alma van Appel',
             address: {
@@ -37,13 +46,7 @@ export async function createBpostLabel() {
   };
 
   try {
-    const auth = Buffer.from(`${config.accountId}:${config.apiKey}`).toString(
-      'base64'
-    );
-
-    // Correct endpoint construction (matches PHP client)
-    const response = await fetch(`${config.apiUrl}orders`, {
-      // Append 'orders' to base URL
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${auth}`,
@@ -54,17 +57,13 @@ export async function createBpostLabel() {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`bpost API error: ${errorText}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Label creation failed:', {
-      error: error.message,
-      endpoint: config.apiUrl,
-      timestamp: new Date().toISOString(),
-    });
-    throw new Error(`Label creation failed: ${error.message}`);
+    console.error('Failed to create bpost order:', error);
+    throw error;
   }
 }
