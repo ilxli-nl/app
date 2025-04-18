@@ -1,13 +1,17 @@
 'use server';
 
-export async function createBpostOrder() {
+export async function createBpostLabel() {
+  // 1. Use the EXACT endpoint from your PHP client
   const apiUrl = 'https://api-parcel.bpost.be/services/shm/orders';
+
+  // 2. Authentication (match your PHP credentials exactly)
   const accountId = '033209';
   const apiKey = 'ioNigHtWiTatOrTHRemE';
   const auth = Buffer.from(`${accountId}:${apiKey}`).toString('base64');
 
-  const orderData = {
-    reference: `ref_${Date.now()}`,
+  // 3. Payload matching your PHP structure EXACTLY
+  const payload = {
+    reference: `ref_EEEEEEEEE`,
     lines: [
       {
         text: 'Article description',
@@ -25,7 +29,7 @@ export async function createBpostOrder() {
           options: [
             {
               type: 'additionalInsurance',
-              value: 2, // 2500 euros insurance
+              value: 2, // 2500€ insurance
             },
           ],
           receiver: {
@@ -52,18 +56,35 @@ export async function createBpostOrder() {
         Authorization: `Basic ${auth}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        'User-Agent': 'YourApp/1.0', // Some APIs require this
       },
-      body: JSON.stringify(orderData),
+      body: JSON.stringify(payload),
     });
 
+    // 4. Enhanced error handling
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`bpost API error: ${errorText}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Full API response:', {
+        status: response.status,
+        headers: Object.fromEntries(response.headers.entries()),
+        body: errorData,
+      });
+
+      if (response.status === 403) {
+        throw new Error(
+          `Access denied. Verify your credentials and API permissions.`
+        );
+      }
+      throw new Error(errorData.message || `HTTP ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Failed to create bpost order:', error);
-    throw error;
+    console.error('API call failed:', {
+      error: error.message,
+      endpoint: apiUrl,
+      timestamp: new Date().toISOString(),
+    });
+    throw new Error(`Label creation failed: ${error.message}`);
   }
 }
