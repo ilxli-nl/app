@@ -22,21 +22,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'api-parcel.bpost.be',
-        // port: '',
-        // pathname: '/account123/**',
-        // search: '',
-      },
-      {
-        protocol: 'https',
-        hostname: 'api.bpost.be',
-        // port: '',
-        // pathname: '/account123/**',
-        // search: '',
-      },
-      {
-        protocol: 'https',
-        hostname: 'shm-rest.bpost.cloud',
+        hostname: 'bpost.ilxli.nl',
         // port: '',
         // pathname: '/account123/**',
         // search: '',
