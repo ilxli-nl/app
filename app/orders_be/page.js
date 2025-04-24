@@ -1,9 +1,7 @@
 import { auth } from '@/auth';
 import { SignInButton } from '../components/sign-in-button';
-import { prisma } from '@/prisma';
 import InfiniteOrders from '../components/InfiniteOrders';
 import Paginations from '../components/pagination';
-import BpostOrderForm from '../components/LabelForm';
 
 const Database = async ({ searchParams }) => {
   const session = await auth();
@@ -16,7 +14,6 @@ const Database = async ({ searchParams }) => {
       <div>
         <Paginations />
 
-        <BpostOrderForm />
         <InfiniteOrders page={page} account={account} />
         <Paginations />
       </div>

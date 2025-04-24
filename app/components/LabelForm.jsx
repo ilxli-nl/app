@@ -1,53 +1,58 @@
 'use client';
-
-import { useActionState, useFormStatus } from 'react-dom';
+import { useState } from 'react';
 import { createBpostLabel } from '../actions/bpost';
 
-export default function LabelForm() {
-  const [state, formAction] = useActionState(createBpostLabel, null);
+export default function LabelForm({data}) {
+  const [state, setState] = useState(null);
+  const [isPending, setIsPending] = useState(false);
 
+  async function handleSubmit(formData) {
+    setIsPending(true);
+    try {
+      const result = await createBpostLabel(formData);
+      setState(result);
+      console.log(result)
+    } catch (error) {
+      setState({ error: error.message });
+    } finally {
+      setIsPending(false);
+    }
+  }
+  console.log(data)
   return (
-    <form action={formAction} className="space-y-4 max-w-md mx-auto">
-      {/* Form fields remain exactly the same as before */}
+
+  
+    <form action={handleSubmit} className="space-y-4 max-w-md mx-auto">
+      {<input type="hidden" id="name" value={`${data.s_firstName} ${data.s_surname}`} name="name" />}
+      {<input type="hidden" id="name" value={data.s_streetName} name="streetName" />}
+      {<input type="hidden" id="name" value={data.s_houseNumber} name="number" />}
+      {<input type="hidden" id="name" value={data.s_city} name="locality" />}
+      {<input type="hidden" id="name" value={data.s_zipCode} name="postalCode" />}
+      {<input type="hidden" id="name" value={data.account} name="countryCode" />}
+      {<input type="hidden" id="name" value={data.phoneNumber} name="phoneNumber" />}
+      {<input type="hidden" id="name" value={data.email} name="email" />}
+      {<input type="hidden" id="name" value={`test-${data.orderId}`} name="orderReference" />}
+
+    <div className='mydict'>
       <div>
-        <label htmlFor="name" className="block mb-1">Name</label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          defaultValue="BBBBBBBBBBBBBBBB"
-          className="w-full p-2 border rounded"
-          required
-        />
+        <label>
+      <input type="radio" id="shipping_BP" name="shipping" value="BP" />
+      <span>BP</span>
+</label>
+<label>
+      <input type="radio" id="shipping_PRO" name="shipping" value="PRO_24" />
+      <span>Pro 24</span></label>
+
+
+      <label>
+<button type="submit" disabled={isPending}> <span>
+        {isPending ? 'Submitting...' : 'Submit'}
+      </span></button>
+</label>
       </div>
 
-      {/* ... other form fields ... */}
-
-      <SubmitButton />
-      
-      {state?.error && (
-        <p className="text-red-500 mt-2">{state.error}</p>
-      )}
-      {state?.data && (
-        <p className="text-green-500 mt-2">Label created successfully!</p>
-      )}
+    </div>
+    
     </form>
-  );
-}
-
-// SubmitButton remains the same
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className={`w-full p-2 bg-blue-500 text-white rounded ${
-        pending ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
-      }`}
-    >
-      {pending ? 'Creating Label...' : 'Create Label'}
-    </button>
   );
 }

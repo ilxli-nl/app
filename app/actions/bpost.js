@@ -5,16 +5,16 @@ export async function createBpostLabel(formData) {
 
   // Convert FormData to JSON matching your Postman structure
   const payload = {
-    Name: formData.get('name') || 'BBBBBBBBBBBBBBBB',
-    StreetName: formData.get('streetName') || 'Rue du Grand Duc',
-    Number: Number(formData.get('number')) || 13,
-    Locality: formData.get('locality') || 'Etterbeek',
-    PostalCode: Number(formData.get('postalCode')) || 1040,
+    Name: formData.get('name'),
+    StreetName: formData.get('streetName') || '',
+    Number: Number(formData.get('number')) || '',
+    Locality: formData.get('locality') || '',
+    PostalCode: Number(formData.get('postalCode')) || '',
     CountryCode: formData.get('countryCode') || 'BE',
-    PhoneNumber: formData.get('phoneNumber') || '+32 2 641 13 90',
-    Email: formData.get('email') || 'alma@antidot.com',
-    OrderReference: formData.get('orderReference') || 'BBBBBBBBBBBBBBBB',
-    Shipping: formData.get('shipping') || 'PRO',
+    PhoneNumber: formData.get('phoneNumber') || '+32 0 000 00 00',
+    Email: formData.get('email') || '',
+    OrderReference: formData.get('orderReference') || '',
+    Shipping: formData.get('shipping') || '',
   };
 
   try {
@@ -25,6 +25,7 @@ export async function createBpostLabel(formData) {
       },
       body: JSON.stringify(payload),
     });
+    console.log(await response.json());
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

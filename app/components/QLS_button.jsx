@@ -5,6 +5,7 @@ import { LabelQLS } from '../actions/actions'
 import { Button, buttonVariants } from '../../components/ui/button'
 import Link from 'next/link'
 import LoadingSpinner from './loadingSpinner'
+import LabelForm from './LabelForm'
 
 function randomIntFromInterval(min, max) {
   // min and max included
@@ -35,58 +36,66 @@ function LabelButtonQLS({ odr }) {
 
   //
 
-  return (
-    <div className='flex space-x-4 mt-5'>
-      <form action={handeler}>
 
-      <input type="hidden" id="postId" name="QLSproductId" value="1" />
-      <input type="hidden" id="postId" name="QLScombination" value="1" />
-      <Button type="submit" className='bg-sky-500'>
-        Create Label DHL BP
-        {/* <Loader2 className="animate-spin" />disabled response */}
-      </Button>
-      </form>
+  if(odr.account === "NL"){
+
+    return (
+      <div className='flex space-x-4 mt-5'>
+        <form action={handeler}>
+  
+        <input type="hidden" id="postId" name="QLSproductId" value="1" />
+        <input type="hidden" id="postId" name="QLScombination" value="1" />
+        <Button type="submit" className='bg-sky-500'>
+          Create Label DHL BP
+          {/* <Loader2 className="animate-spin" />disabled response */}
+        </Button>
+        </form>
+  
+  
+        <form action={handeler}>
+  
+        <input type="hidden" id="postId" name="QLSproductId" value="2" />
+        <input type="hidden" id="postId" name="QLScombination" value="3" />
+        <Button type="submit"  className='bg-orange-500'>
+          Create Label DHL Pakje
+          {/* <Loader2 className="animate-spin" />disabled response */}
+        </Button>
+        </form>
+  
+        <form action={handeler}>
+  
+        <input type="hidden" id="postId" name="QLSproductId" value="10" />
+        <input type="hidden" id="postId" name="QLScombination" value="19" />
+        <Button type="submit" className='bg-yellow-500'>
+          Create Label DHL DHLFYEU
+          {/* <Loader2 className="animate-spin" />disabled response */}
+        </Button>
+        </form>
+  
+        <form action={handeler}>
+  
+        <input type="hidden" id="postId" name="QLSproductId" value="9" />
+        <input type="hidden" id="postId" name="QLScombination" value="18" />
+        <Button type="submit"  className='bg-green-500'>
+          Create Label DHL DHLFY
+          {/* <Loader2 className="animate-spin" />disabled response */}
+        </Button>
+        </form>
+     
+        <Suspense fallback={<LoadingSpinner />}>
+          {response ? (
+            <Button onClick={() => openLabel(response)}> Print </Button>
+          ) : (
+            ''
+          )}
+        </Suspense>
+      </div>
+    )
+  }else{
+    return (<LabelForm data={odr}/>)
+  }
 
 
-      <form action={handeler}>
-
-      <input type="hidden" id="postId" name="QLSproductId" value="2" />
-      <input type="hidden" id="postId" name="QLScombination" value="3" />
-      <Button type="submit"  className='bg-orange-500'>
-        Create Label DHL Pakje
-        {/* <Loader2 className="animate-spin" />disabled response */}
-      </Button>
-      </form>
-
-      <form action={handeler}>
-
-      <input type="hidden" id="postId" name="QLSproductId" value="10" />
-      <input type="hidden" id="postId" name="QLScombination" value="19" />
-      <Button type="submit" className='bg-yellow-500'>
-        Create Label DHL DHLFYEU
-        {/* <Loader2 className="animate-spin" />disabled response */}
-      </Button>
-      </form>
-
-      <form action={handeler}>
-
-      <input type="hidden" id="postId" name="QLSproductId" value="9" />
-      <input type="hidden" id="postId" name="QLScombination" value="18" />
-      <Button type="submit"  className='bg-green-500'>
-        Create Label DHL DHLFY
-        {/* <Loader2 className="animate-spin" />disabled response */}
-      </Button>
-      </form>
-   
-      <Suspense fallback={<LoadingSpinner />}>
-        {response ? (
-          <Button onClick={() => openLabel(response)}> Print </Button>
-        ) : (
-          ''
-        )}
-      </Suspense>
-    </div>
-  )
 }
 
 export default LabelButtonQLS

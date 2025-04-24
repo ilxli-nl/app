@@ -25,11 +25,14 @@ const Order = ({ id, account }) => {
     queryKey: [`Order${id}`],
     queryFn: ({}) => OrderBol(id, account),
   })
-  console.log(account)
+
   if (isPending) return 'Loading...'
   if (isError)
     return 'An error has occurred: ' + isError.message + ' -> ' + account
   if (isError) return 'No Ordders!'
+
+
+  console.log(data)
 
   return (
     <div key={data.orderId}>
@@ -112,7 +115,6 @@ const Order = ({ id, account }) => {
                           </p>
                           <p>
                             {odr.s_zipCode} {odr.s_city}{' '}
-                            {odr.s_houseNumberExtension}
                           </p>
                           {odr.method}
                         </CardDescription>
@@ -124,7 +126,7 @@ const Order = ({ id, account }) => {
                     {odr.distributionParty == 'BOL' ? (
                       ''
                     ) : (
-                      <LabelButtonQLS odr={data} />
+                      <LabelButtonQLS odr={odr} />
                     )}
                   </CardFooter>
                 </Suspense>
