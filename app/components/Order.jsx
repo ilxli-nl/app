@@ -31,13 +31,10 @@ const Order = ({ id, account }) => {
     return 'An error has occurred: ' + isError.message + ' -> ' + account
   if (isError) return 'No Ordders!'
 
-
-  console.log(data)
-
   return (
     <div key={data.orderId}>
       <div>
-        <Card key='`i-${id}}`' className='bg-zinc-50'>
+        <Card key={`order-${data?.orderId}`} className='bg-zinc-50'>
           <CardHeader>
             <CardTitle className='flex justify-between'>
               <div>
