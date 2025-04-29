@@ -1,72 +1,40 @@
-// app/actions/bpost.js
+'use server';
+
 export async function createBpostLabel(formData) {
   const apiUrl = 'https://bpost.ilxli.nl/label.php';
 
-  console.log('API Configuration:', {
-    apiUrl: apiUrl ? `${apiUrl.substring(0, 20)}...` : 'MISSING',
-  });
-
-  if (!apiUrl) {
-    throw new Error('BPOST_API_URL is not defined in environment variables');
-  }
+  // Convert FormData to JSON matching your Postman structure
+  const payload = {
+    Name: formData.get('name'),
+    StreetName: formData.get('streetName') || '',
+    Number: Number(formData.get('number')) || '',
+    Locality: formData.get('locality') || '',
+    PostalCode: Number(formData.get('postalCode')) || '',
+    CountryCode: formData.get('countryCode') || 'BE',
+    PhoneNumber: formData.get('phoneNumber') || '+32 0 000 00 00',
+    Email: formData.get('email') || '',
+    OrderReference: formData.get('orderReference') || '',
+    Shipping: formData.get('shipping') || '',
+  };
 
   try {
-    const payload = {
-      name: formData.get('name'),
-      streetName: formData.get('streetName'),
-      number: formData.get('number'),
-      locality: formData.get('locality'),
-      postalCode: formData.get('postalCode'),
-      countryCode: formData.get('countryCode'),
-      phoneNumber: formData.get('phoneNumber'),
-      email: formData.get('email'),
-      orderReference: formData.get('orderReference'),
-      shipping: formData.get('shipping'),
-    };
-
-    console.log('Request Payload:', payload);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
-      signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
+    console.log(await response.json());
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorText,
-      });
-      throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Full Error Details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      type: error instanceof TypeError ? 'Network/Type Error' : 'Other Error',
-    });
-
-    if (error.name === 'AbortError') {
-      throw new Error('Request timed out (10 seconds)');
-    } else if (error.name === 'TypeError') {
-      throw new Error(
-        `Network error: ${error.message}. Check API URL and connectivity.`
-      );
-    }
-
+    console.error('API Error:', error.message);
     throw new Error(`Label creation failed: ${error.message}`);
   }
 }
