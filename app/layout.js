@@ -1,6 +1,6 @@
 import localFont from 'next/font/local';
 import '@/assets/styles/globals.css';
-import Navbar from './components/navbar';
+import Navbar from '@/components/navbar';
 import QueryProvider from './providers/QueryProvider';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 

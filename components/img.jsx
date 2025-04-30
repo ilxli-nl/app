@@ -1,6 +1,6 @@
 "use client"
 import { useQuery } from '@tanstack/react-query';
-import { OrderImg } from '../actions/actions';
+import { OrderImg } from '../app/actions/actions';
 import Image from 'next/image'
 
 

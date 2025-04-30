@@ -1,7 +1,7 @@
 'use client'
 import { Suspense, React } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { OrderBol } from '../actions/actions'
+import { OrderBol } from '../app/actions/actions'
 import Img from './img'
 import LabelButtonQLS from './QLS_button'
 import Link from 'next/link'

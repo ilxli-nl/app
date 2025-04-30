@@ -1,8 +1,8 @@
 import { auth } from '@/auth';
-import { SignInButton } from '../components/sign-in-button';
+import { SignInButton } from '@/components/sign-in-button';
 import { prisma } from '@/prisma';
-import InfiniteOrders from '../components/InfiniteOrders';
-import Paginations from '../components/pagination';
+import InfiniteOrders from '@/components/InfiniteOrders';
+import Paginations from '@/components/pagination';
 
 const Database = async ({ searchParams }) => {
   const session = await auth();

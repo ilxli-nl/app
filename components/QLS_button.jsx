@@ -1,8 +1,8 @@
 'use client'
 import { Suspense, useState } from 'react'
 //import { Loader2 } from "lucide-react"
-import { LabelQLS } from '../actions/actions'
-import { Button, buttonVariants } from '../../components/ui/button'
+import { LabelQLS } from '../app/actions/actions'
+import { Button, buttonVariants } from '@/components/ui/button'
 import Link from 'next/link'
 import LoadingSpinner from './loadingSpinner'
 import LabelForm from './LabelForm'

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { createBpostLabel } from '../actions/bpost';
+import { createBpostLabel } from '../app/actions/bpost';
 
 export default function LabelForm({data}) {
   const [state, setState] = useState(null);

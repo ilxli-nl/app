@@ -1,7 +1,7 @@
 "use client"
 import { useQuery } from '@tanstack/react-query';
 import { Suspense, React } from 'react'
-import { Orders } from '../actions/actions';
+import { Orders } from '../app/actions/actions';
 import Order from './Order';
 
 

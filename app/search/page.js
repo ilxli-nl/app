@@ -2,7 +2,7 @@
 import { auth } from '@/auth';
 import { SearchForm } from './SearchForm';
 import { searchOrders } from '../actions/search';
-import OrderDone from '../components/Order_done';
+import OrderDone from '@/components/Order_done';
 
 export default async function SearchPage({ searchParams }) {
   const session = await auth();
