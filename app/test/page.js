@@ -2,7 +2,7 @@
 import { ShippingLabelForm } from '@/components/ShippingLabelForm';
 import { Suspense, React } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Orders } from '@/app/actions/actions';
+import { Orders, OrderBol } from '@/app/actions/actions';
 
 export default function ShippingPage() {
   const { isPending, error, data, isFetching } = useQuery({
@@ -12,6 +12,19 @@ export default function ShippingPage() {
   if (isPending || isFetching) return 'Loading...';
   //if (error) return 'An error has occurred: ' + error.message
   if (error) return 'No Ordders!';
+
+  // const { isPending2, isError2, data2, isFetching2 } = useQuery({
+  //   queryKey: [`Order${data.orderId}`],
+  //   queryFn: ({}) => OrderBol(data.orderId, 'BE'),
+  // });
+
+  // if (isPending2) return 'Loading...';
+  // if (isError2)
+  //   return 'An error has occurred: ' + isError2.message + ' -> ' + account;
+  // if (isError2) return 'No Ordders!';
+
+  // console.dir(data2);
+
   // Sample orders data
   // const orders = [
   //   {
@@ -73,18 +86,3 @@ export default function ShippingPage() {
     </div>
   );
 }
-
-// // app/search/page.js
-// import { auth } from '@/auth';
-
-// export default async function SearchPage({ searchParams }) {
-//   const session = await auth();
-
-//   if (session?.user.name == 'ilxli-nl') {
-//     return (
-//       <div className='items-center justify-items-center'>
-//         <h1 className='text-2xl font-bold mb-4'>Order Search</h1>
-//       </div>
-//     );
-//   }
-// }

@@ -18,7 +18,7 @@ export function ShippingLabelForm({ orders = [] }) {
         
         id: order.orderId,
         checked: false,
-        name: order.name,
+        name: order.ean,
         streetName: order.streetName,
         number: order.number,
         Locality: order.Locality,
@@ -137,6 +137,7 @@ export function ShippingLabelForm({ orders = [] }) {
                     <div>
                       <CardTitle className="text-lg">{order.name}</CardTitle>
                       <CardDescription>Order #{order.id}</CardDescription>
+                      <p>{order.name}</p>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2">
