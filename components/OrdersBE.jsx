@@ -2,10 +2,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { Suspense, React } from 'react'
 import { Orders } from '../app/actions/actions';
-import Order from './Order';
+import OrderBE from './OrderBE';
 
 
-const InfiniteOrders = ({page, account})  => {
+const OrdersBE = ({page, account})  => {
 
 //console.log("from infinit"+page)
   const {isPending, error, data, isFetching} = useQuery({ queryKey: ['Orders', page], queryFn: ()=> Orders(page, account) });
@@ -23,7 +23,7 @@ const InfiniteOrders = ({page, account})  => {
           {data.map((order) => (
             <li key={order.orderId}>
               <Suspense fallback={<p>Loading feed...</p>}>
-              <Order id={order.orderId} account={account}/>
+              <OrderBE id={order.orderId} account={account}/>
               </Suspense>
               </li>
           ))}
@@ -33,4 +33,4 @@ const InfiniteOrders = ({page, account})  => {
 
   );
 };
-export default InfiniteOrders;
+export default OrdersBE;

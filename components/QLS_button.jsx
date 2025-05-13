@@ -92,7 +92,9 @@ function LabelButtonQLS({ odr }) {
       </div>
     )
   }else{
-    return (<LabelForm data={odr}/>)
+    //return (<LabelForm data={odr}/>)
+
+    return ""
   }
 
 
