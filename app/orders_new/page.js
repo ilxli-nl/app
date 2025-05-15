@@ -1,16 +1,16 @@
-import { auth } from '@/auth'
-import { SignInButton } from '../components/sign-in-button'
-import { prisma } from '@/prisma'
-import InfiniteOrders from '../components/InfiniteOrders'
-import Paginations from '../components/pagination'
+import { auth } from '@/auth';
+import { SignInButton } from '@/components/sign-in-button';
+import { prisma } from '@/prisma';
+import InfiniteOrders from '@/components/InfiniteOrders';
+import Paginations from '@/components/pagination';
 
 const Database = async ({ searchParams }) => {
-  const session = await auth()
+  const session = await auth();
 
-  const page = await searchParams['page']
-  const account = 'NL_NEW'
+  const page = await searchParams['page'];
+  const account = 'NL_NEW';
 
-  const users = await prisma.user.findMany()
+  const users = await prisma.user.findMany();
 
   if (session?.user.name == 'ilxli-nl') {
     return (
@@ -27,12 +27,12 @@ const Database = async ({ searchParams }) => {
         <InfiniteOrders page={page} account={account} />
         <Paginations />
       </div>
-    )
+    );
   }
   return (
     <div>
       <p> You Are Not Signed In</p> <SignInButton />
     </div>
-  )
-}
-export default Database
+  );
+};
+export default Database;
