@@ -10,7 +10,7 @@ const Database = async ({ searchParams }) => {
   const page = await searchParams['page'];
   const account = 'NL_NEW';
 
-  const users = await prisma.user.findMany();
+  const users = await prisma.orders.findMany();
 
   if (session?.user.name == 'ilxli-nl') {
     return (
@@ -19,7 +19,7 @@ const Database = async ({ searchParams }) => {
         <ul>
           {users.map((user) => (
             <li key={user.id}>
-              {user.name} - {user.email}
+              {user.s_firstName} - {user.email}
             </li>
           ))}
         </ul>

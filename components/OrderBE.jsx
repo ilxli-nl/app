@@ -3,7 +3,7 @@ import { Suspense, React } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { OrderBol } from '../app/actions/actions'
 import Img from './img'
-//import CheckBox from './CheckBox'
+import { useForm } from '@tanstack/react-form';
 import Link from 'next/link'
 import {
   Card,
@@ -15,7 +15,12 @@ import {
 } from '@/components/ui/card'
 
 
-const OrderBE = ({ id, account }) => {
+const OrderBE = ({ id, account, index }) => {
+
+  const { Field } = useForm();
+
+
+
   const formatter = new Intl.DateTimeFormat('nl-NL')
   function isValidDate(d) {
     const date = new Date(d)
@@ -33,15 +38,8 @@ const OrderBE = ({ id, account }) => {
   if (isError) return 'No Ordders!'
 
   return (
-    <>
-    <form
-    onSubmit={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      form.handleSubmit();
-    }}
-    className='space-y-4'
-  >
+
+
     <div key={data.orderId}>
       <div>
         <Card key={`order-${data?.orderId}`} className='bg-zinc-50'>
@@ -128,6 +126,19 @@ const OrderBE = ({ id, account }) => {
                             {odr.s_zipCode} {odr.s_city}{' '}
                           </p>
                           {odr.method}
+ <Field
+      name={`orders.${index}.checked`}
+      children={(field) => (
+        <label>
+          <input
+            type="checkbox"
+            checked={field.state.value}
+            onChange={(e) => field.handleChange(e.target.checked)}
+          />
+          Check me
+        </label>
+      )}
+    />
                         </CardDescription>
                       </div>
                     </div>
@@ -149,8 +160,7 @@ const OrderBE = ({ id, account }) => {
         </Card>
       </div>
     </div>
-    </form>
-    </>
+
   )
 }
 export default OrderBE

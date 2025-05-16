@@ -1,30 +1,36 @@
 'use client';
 
-import { useForm } from '@tanstack/react-form';
+import { useForm, FormProvider } from '@tanstack/react-form';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import Order from './Order';
-import { OrderBol } from '@/app/BC/actions';
-import { prisma } from '@/prisma';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import OrderBE from './OrderBE';
 
 export function  ShippingLabelForm({ orders = [] }) {
 
-  const [data, setData] = useState([])
-
-const odr = async ()=>{
-  const users = await prisma.user.findMany();
-  return users
-}
-
-    console.log(odr)
-
-
   const account = 'BE';
+
+  // const id = orders[0].orderId
+
+
+  //   const { isPending, isError, data, isFetching } = useQuery({
+  //     queryKey: [`Order${id}`],
+  //     queryFn: ({}) => OrderBol(id, 'BE'),
+  //   })
+  
+  //   if (isPending) return 'Loading...'
+  //   if (isError)
+  //     return 'An error has occurred: ' + isError.message + ' -> ' + account
+  //   if (isError) return 'No Ordders!'
+
+
+
+  //   console.log(data)
+
+
+
+
 
   const form = useForm({
     defaultValues: {
@@ -62,11 +68,9 @@ const odr = async ()=>{
     }
   });
 
-  const dato = (dat) => {
-setData(dat)
-  }
 
-  console.log(data)
+
+  //console.log(data)
 
 
   // Get current form values
@@ -92,6 +96,7 @@ setData(dat)
   };
 
   return (
+    <FormProvider form={form}>
     <form
       onSubmit={e => {
         e.preventDefault();
@@ -139,7 +144,7 @@ setData(dat)
                     </div>
                   </CardHeader>
           
-                      <Order id={order.id} account={account}/>
+                      <OrderBE id={order.id} account={account} index={0}/>
                 
                 </Card>
               ))}
@@ -161,10 +166,12 @@ setData(dat)
       </div>
 
       <div className="mt-6">
+       
         <Button type="submit" className="w-full sm:w-auto">
           Generate Shipping Labels
         </Button>
       </div>
     </form>
+    </FormProvider>
   );
 }
