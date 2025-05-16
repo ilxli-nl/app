@@ -3,7 +3,7 @@ import { Suspense, React } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { OrderBol } from '../app/actions/actions'
 import Img from './img'
-import CheckBox from './CheckBox'
+//import CheckBox from './CheckBox'
 import Link from 'next/link'
 import {
   Card,

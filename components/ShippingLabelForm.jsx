@@ -6,16 +6,29 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import Order from './Order';
+import { OrderBol } from '@/app/BC/actions';
+import { prisma } from '@/prisma';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
-export function ShippingLabelForm({ orders = [] }) {
+export function  ShippingLabelForm({ orders = [] }) {
+
+  const [data, setData] = useState([])
+
+const odr = async ()=>{
+  const users = await prisma.user.findMany();
+  return users
+}
+
+    console.log(odr)
 
 
-  console.log(orders)
+  const account = 'BE';
+
   const form = useForm({
     defaultValues: {
       orders: orders.map(order => ({
-
-        
         id: order.orderId,
         checked: false,
         name: order.ean,
@@ -29,21 +42,6 @@ export function ShippingLabelForm({ orders = [] }) {
         OrderReference: order.OrderReference,
         Shipping: order.Shipping,
       }))
-
-      // id: 'ORD-9999',
-      // name: 'Jhuyhf Hyet',
-      // streetName: 'Main St',
-      // number: 166,
-      // Locality: 'New York',
-      // PostalCode: '10001',
-      // CountryCode: 'USA',
-      // PhoneNumber: '1231321321321',
-      // Email: 'ashdsd@kjshfdsf.nl',
-      // OrderReference: 'CCCCCCC',
-      // Shipping: 'BE',
-
-
-
     },
     onSubmit: async ({ value }) => {
       const ordersToShip = value.orders.filter(order => order.checked);
@@ -54,14 +52,8 @@ export function ShippingLabelForm({ orders = [] }) {
       }
 
       try {
-
-
-        
         console.log('Submitting orders:', ordersToShip);
         alert(`Would submit ${ordersToShip.length} orders to shipping API`);
-
-
-
 
       } catch (error) {
         console.error('Error submitting shipping labels:', error);
@@ -69,6 +61,12 @@ export function ShippingLabelForm({ orders = [] }) {
       }
     }
   });
+
+  const dato = (dat) => {
+setData(dat)
+  }
+
+  console.log(data)
 
 
   // Get current form values
@@ -115,7 +113,7 @@ export function ShippingLabelForm({ orders = [] }) {
       </div>
 
       {/* Orders List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-rows">
         {form.Field({
           name: 'orders',
           children: (field) => (
@@ -140,9 +138,9 @@ export function ShippingLabelForm({ orders = [] }) {
                       <p>{order.name}</p>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    {/* ... rest of your card content ... */}
-                  </CardContent>
+          
+                      <Order id={order.id} account={account}/>
+                
                 </Card>
               ))}
             </>
