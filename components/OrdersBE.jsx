@@ -16,7 +16,13 @@ const OrdersBE = ({page, account})  => {
  console.log(data);
   const myRnId = () => parseInt(Date.now() * Math.random());
   return (
-
+    <>
+           <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+      >
     <div className='bg-slate-300 grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 sm:p-20 font-[family-name:var(--font-geist-sans)]'>
       <main key={myRnId()} className='flex flex-col gap-8 row-start-2 items-center sm:items-start'>
         <ul>
@@ -30,6 +36,8 @@ const OrdersBE = ({page, account})  => {
         </ul>
       </main>
     </div>
+    </form>
+    </>
 
   );
 };

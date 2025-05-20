@@ -1,7 +1,11 @@
 import { auth } from '@/auth';
 import { SignInButton } from '@/components/sign-in-button';
+import { ComboOrders } from '../app/actions/actions';
 
 export default async function Home() {
+  const t = await ComboOrders(1, 'NL');
+  console.log(t);
+
   const session = await auth();
   if (session?.user.name == 'ilxli-nl') {
     return (

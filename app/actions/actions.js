@@ -277,3 +277,46 @@ export const LabelQLS = async (odr) => {
     'https://api.pakketdienstqls.nl/pdf/labels/d6658315-1992-45fb-8abe-5461c771778f.pdf?token=f546c271-10a1-49a7-a7e6-de53c9c6727a&size=a6';
   return lab;
 };
+
+const submitForm = async (value) => {
+  console.log('Form submitted: ', value);
+  return { success: true, message: 'Form submitted successfully' };
+};
+
+export default submitForm;
+
+/// working orders!
+
+export const ComboOrders = async (page, account) => {
+  const tok = await Token(account);
+  const token = tok.token;
+
+  const response = await fetch(
+    `${process.env.BOLAPI}retailer/orders?page=${page}`,
+    {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/vnd.retailer.v10+json',
+        Authorization: 'Bearer ' + token,
+      },
+    }
+  );
+
+  const p = await response.json();
+
+  if (!p.orders) {
+    return [];
+  }
+
+  // Process all orders in parallel
+  const orderPromises = p.orders.map((odr) => OrderBol(odr.orderId, account));
+  const orderDetails = await Promise.all(orderPromises);
+
+  // Combine orderId with its details
+  const result = p.orders.map((odr, index) => ({
+    orderId: odr.orderId,
+    details: orderDetails[index],
+  }));
+  return result;
+};

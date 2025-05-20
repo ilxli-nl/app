@@ -3,7 +3,7 @@ import { Suspense, React } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { OrderBol } from '../app/actions/actions'
 import Img from './img'
-import { useForm } from '@tanstack/react-form';
+import { useForm, useStore } from "@tanstack/react-form";
 import Link from 'next/link'
 import {
   Card,
@@ -14,11 +14,47 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 
-
+import submitForm from "@/app/actions/actions";
+import { useState } from "react";
 const OrderBE = ({ id, account, index }) => {
 
-  const { Field } = useForm();
+    const [response, setResponse] = useState(null);
+    
+  
+  
+  
 
+      const form = useForm({
+        defaultValues: {
+          fullname: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+        },
+        validators: {
+          onChange: ({ value }) => {
+            if (!/\S+@\S+\.\S+/.test(value.email)) {
+              return "Email address not valid";
+            }
+          },
+        },
+        onSubmit: async ({ value }) => {
+              e.preventDefault();
+          //Do somethig here
+          console.log("Form Values are : ", value);
+    
+          const result = await submitForm(value);
+          setResponse(result.message);
+    
+          if (result.success) {
+    
+            
+            form.reset();
+          }
+        },
+      });
+  
+  const formErrorMap = useStore(form.store, (state) => state.errorMap);
 
 
   const formatter = new Intl.DateTimeFormat('nl-NL')
@@ -38,6 +74,105 @@ const OrderBE = ({ id, account, index }) => {
   if (isError) return 'No Ordders!'
 
   return (
+<>
+
+
+
+
+    <div>
+      <h2>Next.js + Tanstack Form</h2>
+
+        <form.Field
+          name="fullname"
+          validators={{
+            onChange: ({ value }) =>
+              !value
+                ? "Fullname is required"
+                : value.length < 3
+                ? "Fullname must be at least 3 characters"
+                : undefined,
+          }}
+          children={(field) => (
+            <div>
+              <label htmlFor={field.name}>Fullname</label>
+              <input
+                name={field.name}
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+              {field.state.meta.errors ? (
+                <em role="alert">{field.state.meta.errors}</em>
+              ) : null}
+            </div>
+          )}
+        />
+        <form.Field name="email">
+          {(field) => (
+            <div>
+              <label htmlFor={field.name}>Email</label>
+              <input
+                name={field.name}
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+              {formErrorMap.onChange ? (
+                <em role="alert">{formErrorMap.onChange}</em>
+              ) : null}
+            </div>
+          )}
+        </form.Field>
+        <form.Field name="password">
+          {(field) => (
+            <div>
+              <label htmlFor={field.name}>Password</label>
+              <input
+                name={field.name}
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+            </div>
+          )}
+        </form.Field>
+        <form.Field
+          name="confirmPassword"
+          validators={{
+            onChangeListenTo: ["password"],
+            onChange: ({ value, fieldApi }) => {
+              if (value !== fieldApi.form.getFieldValue("password")) {
+                return "Passwords do not match";
+              }
+              return undefined;
+            },
+          }}
+        >
+          {(field) => (
+            <div>
+              <label htmlFor={field.name}>Confirm Pass</label>
+              <input
+                name={field.name}
+                value={field.state.value}
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(e.target.value)}
+              />
+              {field.state.meta.errors ? (
+                <em role="alert">{field.state.meta.errors}</em>
+              ) : null}
+            </div>
+          )}
+        </form.Field>
+        <button type="submit">Submit</button>
+        {response && <p>{response}</p>}
+    
+    </div>
+
+
+
+
+
+
 
 
     <div key={data.orderId}>
@@ -126,19 +261,6 @@ const OrderBE = ({ id, account, index }) => {
                             {odr.s_zipCode} {odr.s_city}{' '}
                           </p>
                           {odr.method}
- <Field
-      name={`orders.${index}.checked`}
-      children={(field) => (
-        <label>
-          <input
-            type="checkbox"
-            checked={field.state.value}
-            onChange={(e) => field.handleChange(e.target.checked)}
-          />
-          Check me
-        </label>
-      )}
-    />
                         </CardDescription>
                       </div>
                     </div>
@@ -160,7 +282,8 @@ const OrderBE = ({ id, account, index }) => {
         </Card>
       </div>
     </div>
-
+</>
   )
+
 }
 export default OrderBE
