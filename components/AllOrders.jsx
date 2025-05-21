@@ -1,7 +1,7 @@
 'use client'
+import { ComboOrders } from '../app/actions/actions';
+import { useQuery } from '@tanstack/react-query';
 import { Suspense, React } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { OrderBol } from '../app/actions/actions'
 import Img from './img'
 import LabelButtonQLS from './QLS_button'
 import Link from 'next/link'
@@ -14,40 +14,49 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 
-const Order = ({ id, account }) => {
-  const formatter = new Intl.DateTimeFormat('nl-NL')
-  function isValidDate(d) {
+
+
+
+const AllOrders = ({page, account}) => {//{ page, account }
+ const formatter = new Intl.DateTimeFormat('nl-NL')
+ function isValidDate(d) {
     const date = new Date(d)
     return d && !isNaN(date)
   }
 
-  const { isPending, isError, data, isFetching } = useQuery({
-    queryKey: [`Order${id}`],
-    queryFn: ({}) => OrderBol(id, account),
-  })
 
-  if (isPending) return 'Loading...'
-  if (isError)
-    return 'An error has occurred: ' + isError.message + ' -> ' + account
-  if (isError) return 'No Ordders!'
+  // const account = 'NL';
+  // const page = 1;
 
+  const { isPending, error, data, isFetching } = useQuery({
+    queryKey: ['Orders', page],
+    queryFn: () => ComboOrders(page, account),
+  });
+  if (isPending || isFetching) return 'Loading...';
+  //if (error) return 'An error has occurred: ' + error.message
+  if (error) return 'No Ordders!';
+
+console.log(data)
   return (
-    <div key={data.orderId}>
-      <div>
-        <Card key={`order-${data?.orderId}`} className='bg-zinc-50'>
+<>
+ <ul>
+          {data.map((order) => (
+            <li key={order.orderId}>
+<Card key={`order-${data?.orderId}`} className='bg-zinc-50'>
           <CardHeader>
             <CardTitle className='flex justify-between'>
               <div>
-                <h1 className='text-2xl'>{data[0]?.orderId}</h1>
+                <h1 className='text-2xl'>{order.orderId}</h1>
               </div>
               <div>
                 <h2 className='text-5xl'>{account}</h2>
               </div>
             </CardTitle>
           </CardHeader>
+
           {
             // data?.map((odr) => (
-            (Array.isArray(data) ? data : []).map((odr) => (
+            (Array.isArray(order.details) ? order.details : []).map((odr) => (
               <>
                 <Suspense fallback={<p>Loading feed...</p>}>
                   <CardContent
@@ -62,7 +71,7 @@ const Order = ({ id, account }) => {
                         }  p-3 rounded-md`}
                       >
                         <Suspense fallback={<p>Loading feed...</p>}>
-                          <Img ean={odr.ean} />
+                          <Img ean={odr.ean} account={odr.account} />
                         </Suspense>
 
                         <figcaption
@@ -130,9 +139,17 @@ const Order = ({ id, account }) => {
               </>
             ))
           }
-        </Card>
-      </div>
-    </div>
+
+          </Card>
+
+
+     </li>
+          ))}
+        </ul>
+ </>   
   )
+ 
 }
-export default Order
+
+
+export default AllOrders

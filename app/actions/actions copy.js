@@ -104,44 +104,93 @@ const AddDBImage = async (ean, image) => {
 
 const imageCache = new Map();
 
+// export const OrderImg = async (ean, account) => {
+//   if (imageCache.has(ean)) {
+//     return imageCache.get(ean);
+//   }
+
+//   const imgFromDB = await prisma.images.findFirst({ where: { ean } });
+
+//   if (imgFromDB) {
+//     imageCache.set(ean, imgFromDB.image);
+//     return imgFromDB.image;
+//   }
+
+//   const tok = await Token(account);
+//   const token = tok.token;
+
+//   const response = await fetch(
+//     `${process.env.BOLAPI}retailer/products/${ean}/assets`,
+//     {
+//       cache: 'force-cache',
+//       method: 'GET',
+//       headers: {
+//         Accept: 'application/vnd.retailer.v10+json',
+//         Authorization: 'Bearer ' + token,
+//       },
+//     }
+//   );
+
 export const OrderImg = async (ean, account) => {
+  // Check cache first
   if (imageCache.has(ean)) {
     return imageCache.get(ean);
   }
 
-  const imgFromDB = await prisma.images.findFirst({ where: { ean } });
+  try {
+    // Try to get image from database
+    const imgFromDB = await prisma.images.findFirst({ where: { ean } });
+    if (imgFromDB?.image) {
+      imageCache.set(ean, imgFromDB.image);
+      return imgFromDB.image;
+    }
 
-  if (imgFromDB) {
-    imageCache.set(ean, imgFromDB.image);
-    return imgFromDB.image;
-  }
+    // If not in DB, fetch from API
+    const { token } = await Token(account);
+    if (!token) {
+      throw new Error('Failed to get authentication token');
+    }
 
-  const tok = await Token(account);
-  const token = tok.token;
-
-  const response = await fetch(
-    `${process.env.BOLAPI}retailer/products/${ean}/assets`,
-    {
+    const apiUrl = `${process.env.BOLAPI}retailer/products/${ean}/assets`;
+    const response = await fetch(apiUrl, {
       cache: 'force-cache',
       method: 'GET',
       headers: {
         Accept: 'application/vnd.retailer.v10+json',
-        Authorization: 'Bearer ' + token,
+        Authorization: `Bearer ${token}`,
       },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
     }
-  );
 
-  if (!response.ok) {
-    return '/no_image.jpg';
+    const data = await response.json();
+    if (!data?.image) {
+      throw new Error('No image data found in API response');
+    }
+
+    // Cache the image for future requests
+    imageCache.set(ean, data.image);
+
+    // Optional: Store the image in DB for persistence
+    try {
+      await prisma.images.upsert({
+        where: { ean },
+        update: { image: data.image },
+        create: { ean, image: data.image },
+      });
+    } catch (dbError) {
+      console.error('Failed to store image in database:', dbError);
+      // Continue even if DB storage fails
+    }
+
+    return data.image;
+  } catch (error) {
+    console.error(`Failed to get image for EAN ${ean}:`, error);
+    // Return a default image or null if you prefer
+    return null;
   }
-
-  const images = await response.json();
-  const img = images.assets[0]?.variants[1]?.url || '/no_image.jpg';
-
-  await AddDBImage(ean, img);
-  imageCache.set(ean, img);
-
-  return img;
 };
 
 export const AddDB = async (data) => {
@@ -276,4 +325,47 @@ export const LabelQLS = async (odr) => {
   const lab =
     'https://api.pakketdienstqls.nl/pdf/labels/d6658315-1992-45fb-8abe-5461c771778f.pdf?token=f546c271-10a1-49a7-a7e6-de53c9c6727a&size=a6';
   return lab;
+};
+
+const submitForm = async (value) => {
+  console.log('Form submitted: ', value);
+  return { success: true, message: 'Form submitted successfully' };
+};
+
+export default submitForm;
+
+/// working orders!
+
+export const ComboOrders = async (page, account) => {
+  const tok = await Token(account);
+  const token = tok.token;
+
+  const response = await fetch(
+    `${process.env.BOLAPI}retailer/orders?page=${page}`,
+    {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/vnd.retailer.v10+json',
+        Authorization: 'Bearer ' + token,
+      },
+    }
+  );
+
+  const p = await response.json();
+
+  if (!p.orders) {
+    return [];
+  }
+
+  // Process all orders in parallel
+  const orderPromises = p.orders.map((odr) => OrderBol(odr.orderId, account));
+  const orderDetails = await Promise.all(orderPromises);
+
+  // Combine orderId with its details
+  const result = p.orders.map((odr, index) => ({
+    orderId: odr.orderId,
+    details: orderDetails[index],
+  }));
+  return result;
 };

@@ -1,32 +1,27 @@
 import { auth } from '@/auth';
 import { SignInButton } from '@/components/sign-in-button';
-import { prisma } from '@/prisma';
-import InfiniteOrders from '@/components/InfiniteOrders';
 import Paginations from '@/components/pagination';
+import AllOrders from '@/components/AllOrders';
 
 const Database = async ({ searchParams }) => {
   const session = await auth();
 
   const page = await searchParams['page'];
   const account = 'NL';
+  const myRnId = () => parseInt(Date.now() * Math.random());
 
-  const users = await prisma.user.findMany();
-
-  // console.log(users);
   if (session?.user.name == 'ilxli-nl') {
     return (
-      <div>
-        <h1>Users</h1>
-        <ul>
-          {users.map((user) => (
-            <li key={user.id}>
-              {user.name} - {user.email}
-            </li>
-          ))}
-        </ul>
-        <Paginations />
-        <InfiniteOrders page={page} account={account} />
-        <Paginations />
+      <div className='bg-slate-300 grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 sm:p-20 font-[family-name:var(--font-geist-sans)]'>
+        <main
+          key={myRnId()}
+          className='flex flex-col gap-8 row-start-2 items-center sm:items-start'
+        >
+          <Paginations />
+          <AllOrders page={page} account={account} />
+
+          <Paginations />
+        </main>
       </div>
     );
   }
