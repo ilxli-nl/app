@@ -36,7 +36,6 @@ const AllOrders = ({page, account}) => {//{ page, account }
   //if (error) return 'An error has occurred: ' + error.message
   if (error) return 'No Ordders!';
 
-console.log(data)
   return (
 <>
  <ul>
@@ -75,12 +74,12 @@ console.log(data)
                         </Suspense>
 
                         <figcaption
-                          className={`mt-2 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
-                            odr.latestDeliveryDate ?? `bg-red-400 rounded-md`
+                          className={`mt-2 p-4 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
+                            odr.latestDeliveryDate ?? `bg-red-600 rounded-md`
                           }`}
                         >
-                          {data.exactDeliveryDate
-                            ? `Exact: ${odr.exactDeliveryDate}`
+                          {odr.exactDeliveryDate
+                            ? `Exact: ${formatter.format(odr.exactDeliveryDate)}`
                             : isValidDate(odr.latestDeliveryDate)
                             ? `${formatter.format(
                                 new Date(odr.latestDeliveryDate)

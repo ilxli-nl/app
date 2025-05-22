@@ -73,25 +73,25 @@ export const Token = async (account) => {
   };
 };
 
-export const Orders = async (page, account) => {
-  const tok = await Token(account);
-  const token = tok.token;
+// export const Orders = async (page, account) => {
+//   const tok = await Token(account);
+//   const token = tok.token;
 
-  const response = await fetch(
-    `${process.env.BOLAPI}retailer/orders?page=${page}`,
-    {
-      method: 'GET',
-      cache: 'no-store',
-      headers: {
-        Accept: 'application/vnd.retailer.v10+json',
-        Authorization: 'Bearer ' + token,
-      },
-    }
-  );
+//   const response = await fetch(
+//     `${process.env.BOLAPI}retailer/orders?page=${page}`,
+//     {
+//       method: 'GET',
+//       cache: 'no-store',
+//       headers: {
+//         Accept: 'application/vnd.retailer.v10+json',
+//         Authorization: 'Bearer ' + token,
+//       },
+//     }
+//   );
 
-  const p = await response.json();
-  return p.orders || [];
-};
+//   const p = await response.json();
+//   return p.orders || [];
+// };
 
 const AddDBImage = async (ean, image) => {
   await prisma.images.upsert({
@@ -278,12 +278,12 @@ export const LabelQLS = async (odr) => {
   return lab;
 };
 
-const submitForm = async (value) => {
+const SubmitForm = async (value) => {
   console.log('Form submitted: ', value);
   return { success: true, message: 'Form submitted successfully' };
 };
 
-export default submitForm;
+export default SubmitForm;
 
 /// working orders!
 

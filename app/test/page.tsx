@@ -1,7 +1,18 @@
-import Image from "next/image";
-import styles from "./page.module.css";
-import Form from "@/components/test";
+import  OrderList  from '@/components/OrderList';
 
-export default function Home() {
-  return <Form />;
+
+
+function Test() {
+
+
+  const page = 1
+  const account = 'NL'
+  return (
+
+       <OrderList page={page} account={account} />
+
+  )
 }
+
+export default Test
+

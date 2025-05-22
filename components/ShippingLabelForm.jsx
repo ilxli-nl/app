@@ -11,27 +11,6 @@ export function  ShippingLabelForm({ orders = [] }) {
 
   const account = 'BE';
 
-  // const id = orders[0].orderId
-
-
-  //   const { isPending, isError, data, isFetching } = useQuery({
-  //     queryKey: [`Order${id}`],
-  //     queryFn: ({}) => OrderBol(id, 'BE'),
-  //   })
-  
-  //   if (isPending) return 'Loading...'
-  //   if (isError)
-  //     return 'An error has occurred: ' + isError.message + ' -> ' + account
-  //   if (isError) return 'No Ordders!'
-
-
-
-  //   console.log(data)
-
-
-
-
-
   const form = useForm({
     defaultValues: {
       orders: orders.map(order => ({
