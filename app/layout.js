@@ -3,6 +3,7 @@ import '@/assets/styles/globals.css';
 import Navbar from '@/components/navbar';
 import QueryProvider from './providers/QueryProvider';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Toaster } from '@/components/ui/toaster';
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -30,6 +31,7 @@ export default function RootLayout({ children }) {
           <Navbar />
           {children}
           <ReactQueryDevtools initialIsOpen={false} />
+          <Toaster />
         </body>
       </QueryProvider>
     </html>

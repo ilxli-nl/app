@@ -8,7 +8,8 @@ import Link from 'next/link';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "@/hooks/use-toast";
+import { useToast  } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -81,6 +82,11 @@ const AllOrders = ({ page, account }) => {
     );
   }, [selectedItems, allEANs, form]);
 
+
+const { toast } = useToast()
+
+
+
   const onSubmit = async (data) => {
     console.log('Form submitted:', data); // Debug log
     try {
@@ -91,6 +97,9 @@ const AllOrders = ({ page, account }) => {
             <code className="text-white">{JSON.stringify(data, null, 2)}</code>
           </pre>
         ),
+        action: (
+            <ToastAction altText="Goto schedule to undo">Undo</ToastAction>
+          ),
       });
     } catch (error) {
       console.error('Submission error:', error);
@@ -106,6 +115,9 @@ const AllOrders = ({ page, account }) => {
   if (error) return 'No Orders!';
 
   return (
+
+    <>
+    <toast />
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {/* Top Select All Checkbox */}
@@ -262,6 +274,7 @@ const AllOrders = ({ page, account }) => {
         </div>
       </form>
     </Form>
+    </>
   );
 }
 
