@@ -1,14 +1,14 @@
 'use client'
 import { ComboOrders } from '../app/actions/actions';
 import { useQuery } from '@tanstack/react-query';
-import { Suspense, useCallback, useEffect  } from 'react';
+import { Suspense, useCallback, useEffect } from 'react';
 import Img from './img';
 import LabelButtonQLS from './QLS_button';
 import Link from 'next/link';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { useToast  } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast"
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,15 +28,27 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
- const formatter = new Intl.DateTimeFormat('nl-NL')
-  function isValidDate(d) {
-    const date = new Date(d)
-    return d && !isNaN(date)
-  }
+const formatter = new Intl.DateTimeFormat('nl-NL')
+function isValidDate(d) {
+  const date = new Date(d)
+  return d && !isNaN(date)
+}
 
-
+// Updated FormSchema to include address information
 const FormSchema = z.object({
-  selectedItems: z.array(z.string()).min(1, {
+  selectedItems: z.array(z.object({
+    orderId: z.string(),
+    ean: z.string(),
+    address: z.object({
+      firstName: z.string(),
+      surname: z.string(),
+      streetName: z.string(),
+      houseNumber: z.string(),
+      houseNumberExtension: z.string().optional(),
+      zipCode: z.string(),
+      city: z.string()
+    })
+  })).min(1, {
     message: "You must select at least one item.",
   }),
 });
@@ -52,7 +64,7 @@ const AllOrders = ({ page, account }) => {
     defaultValues: {
       selectedItems: [],
     },
-    mode: 'onChange', // Validate on change
+    mode: 'onChange',
   });
 
   const selectedItems = useWatch({
@@ -60,35 +72,35 @@ const AllOrders = ({ page, account }) => {
     name: "selectedItems",
   });
 
-  // Debugging - log form state
-  useEffect(() => {
-    const subscription = form.watch((value, { name, type }) => {
-      console.log('Form update:', value, name, type);
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
+  const { toast } = useToast()
 
-  const allEANs = data?.flatMap(order => 
-    Array.isArray(order.details) 
-      ? order.details.map(detail => detail.ean) 
-      : []
-  ) || [];
+  // Get all order IDs
+  const allOrderIds = data?.map(order => order.orderId) || [];
 
   const toggleSelectAll = useCallback(() => {
-    form.setValue(
-      'selectedItems',
-      selectedItems.length === allEANs.length ? [] : allEANs,
-      { shouldValidate: true }
-    );
-  }, [selectedItems, allEANs, form]);
-
-
-const { toast } = useToast()
-
-
+    if (selectedItems.length === allOrderIds.length) {
+      form.setValue('selectedItems', []);
+    } else {
+      // Include address information when selecting all
+      const allItemsWithAddress = data?.map(order => ({
+        orderId: order.orderId,
+        ean: order.details?.[0]?.ean || '', // Taking first item's EAN as example
+        address: {
+          firstName: order.details?.[0]?.s_firstName || '',
+          surname: order.details?.[0]?.s_surname || '',
+          streetName: order.details?.[0]?.s_streetName || '',
+          houseNumber: order.details?.[0]?.s_houseNumber || '',
+          houseNumberExtension: order.details?.[0]?.s_houseNumberExtension || '',
+          zipCode: order.details?.[0]?.s_zipCode || '',
+          city: order.details?.[0]?.s_city || ''
+        }
+      })) || [];
+      form.setValue('selectedItems', allItemsWithAddress);
+    }
+  }, [selectedItems, allOrderIds, data, form]);
 
   const onSubmit = async (data) => {
-    console.log('Form submitted:', data); // Debug log
+    console.log('Form submitted with address info:', data);
     try {
       toast({
         title: "Submission successful",
@@ -97,9 +109,7 @@ const { toast } = useToast()
             <code className="text-white">{JSON.stringify(data, null, 2)}</code>
           </pre>
         ),
-        action: (
-            <ToastAction altText="Goto schedule to undo">Undo</ToastAction>
-          ),
+        action: <ToastAction altText="Goto schedule to undo">Undo</ToastAction>,
       });
     } catch (error) {
       console.error('Submission error:', error);
@@ -115,9 +125,6 @@ const { toast } = useToast()
   if (error) return 'No Orders!';
 
   return (
-
-    <>
-    <toast />
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {/* Top Select All Checkbox */}
@@ -129,15 +136,15 @@ const { toast } = useToast()
               <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                 <FormControl>
                   <Checkbox
-                    checked={selectedItems.length === allEANs.length && allEANs.length > 0}
+                    checked={selectedItems.length === allOrderIds.length && allOrderIds.length > 0}
                     onCheckedChange={toggleSelectAll}
                   />
                 </FormControl>
                 <FormLabel className="text-sm font-medium">
-                  {selectedItems.length === allEANs.length ? 'Deselect All' : 'Select All'}
+                  {selectedItems.length === allOrderIds.length ? 'Deselect All' : 'Select All'}
                 </FormLabel>
                 <span className="text-sm text-gray-500">
-                  {selectedItems.length} of {allEANs.length} selected
+                  {selectedItems.length} of {allOrderIds.length} selected
                 </span>
               </FormItem>
             )}
@@ -152,6 +159,44 @@ const { toast } = useToast()
                   <CardTitle className='flex justify-between'>
                     <div>
                       <h1 className='text-2xl'>{order.orderId}</h1>
+                    </div>
+                    <div>
+                      <FormField
+                        control={form.control}
+                        name="selectedItems"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.some(item => item.orderId === order.orderId)}
+                                onCheckedChange={(checked) => {
+                                  const currentValue = field.value || [];
+                                  if (checked) {
+                                    // Add order with address information when checked
+                                    const newItem = {
+                                      orderId: order.orderId,
+                                      ean: order.details?.[0]?.ean || '', // Taking first item's EAN
+                                      address: {
+                                        firstName: order.details?.[0]?.s_firstName || '',
+                                        surname: order.details?.[0]?.s_surname || '',
+                                        streetName: order.details?.[0]?.s_streetName || '',
+                                        houseNumber: order.details?.[0]?.s_houseNumber || '',
+                                        houseNumberExtension: order.details?.[0]?.s_houseNumberExtension || '',
+                                        zipCode: order.details?.[0]?.s_zipCode || '',
+                                        city: order.details?.[0]?.s_city || ''
+                                      }
+                                    };
+                                    field.onChange([...currentValue, newItem]);
+                                  } else {
+                                    // Remove order when unchecked
+                                    field.onChange(currentValue.filter(item => item.orderId !== order.orderId));
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                     </div>
                     <div>
                       <h2 className='text-5xl'>{account}</h2>
@@ -204,28 +249,6 @@ const { toast } = useToast()
                                 {odr.s_zipCode} {odr.s_city}
                               </p>
                               <p>{odr.method}</p>
-
-                              <FormField
-                                control={form.control}
-                                name="selectedItems"
-                                render={({ field }) => (
-                                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.includes(odr.ean)}
-                                        onCheckedChange={(checked) => {
-                                          return checked
-                                            ? field.onChange([...field.value, odr.ean])
-                                            : field.onChange(field.value?.filter(value => value !== odr.ean))
-                                        }}
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="text-sm font-normal">
-                                      Select this item
-                                    </FormLabel>
-                                  </FormItem>
-                                )}
-                              />
                             </CardDescription>
                           </div>
                         </div>
@@ -256,15 +279,15 @@ const { toast } = useToast()
                 <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                   <FormControl>
                     <Checkbox
-                      checked={selectedItems.length === allEANs.length && allEANs.length > 0}
+                      checked={selectedItems.length === allOrderIds.length && allOrderIds.length > 0}
                       onCheckedChange={toggleSelectAll}
                     />
                   </FormControl>
                   <FormLabel className="text-sm font-medium">
-                    {selectedItems.length === allEANs.length ? 'Deselect All' : 'Select All'}
+                    {selectedItems.length === allOrderIds.length ? 'Deselect All' : 'Select All'}
                   </FormLabel>
                   <span className="text-sm text-gray-500">
-                    {selectedItems.length} of {allEANs.length} selected
+                    {selectedItems.length} of {allOrderIds.length} selected
                   </span>
                 </FormItem>
               )}
@@ -274,7 +297,6 @@ const { toast } = useToast()
         </div>
       </form>
     </Form>
-    </>
   );
 }
 
