@@ -112,7 +112,9 @@ const AllOrders = ({ page, account }) => {
   const onSubmit = async (data) => {
     console.log('Form submitted with address info:', data);
     try {
-      SubmitForm(data)
+      //SubmitForm(data)
+      createBpostLabel(data)
+
       toast({
         title: "Submission successful",
         description: (
@@ -169,9 +171,10 @@ const AllOrders = ({ page, account }) => {
                 <CardHeader>
                   <CardTitle className='flex justify-between'>
                     <div>
-                      <h1 className='text-2xl'>{order.orderId}</h1>
-                    </div>
-                    <div>
+                       <div className='flex flex-row items-start space-x-3 space-y-0'>
+                      
+
+                     
                       <FormField
                         control={form.control}
                         name="selectedItems"
@@ -205,7 +208,11 @@ const AllOrders = ({ page, account }) => {
                           </FormItem>
                         )}
                       />
+
+                      <h1 className='text-2xl'>{order.orderId}</h1>
                     </div>
+                    </div>
+                    
                     <div>
                       <h2 className='text-5xl'>{account}</h2>
                     </div>
