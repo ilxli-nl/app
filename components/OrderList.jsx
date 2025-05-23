@@ -1,5 +1,6 @@
 'use client'
-import { ComboOrders } from '../app/actions/actions';
+import { ComboOrders, SubmitForm } from '@/app/actions/actions';
+import {createBpostLabel} from '@/app/actions/bpost'
 import { useQuery } from '@tanstack/react-query';
 import { Suspense, useCallback, useEffect } from 'react';
 import Img from './img';
@@ -38,20 +39,20 @@ function isValidDate(d) {
 const FormSchema = z.object({
   selectedItems: z.array(z.object({
     orderId: z.string(),
-    ean: z.string(),
     address: z.object({
-      firstName: z.string(),
-      surname: z.string(),
-      streetName: z.string(),
+      name: z.string(),
+      StreetName: z.string(),
       houseNumber: z.string(),
-      houseNumberExtension: z.string().optional(),
-      zipCode: z.string(),
-      city: z.string()
+      PostalCode: z.string(),
+      Locality: z.string()
     })
   })).min(1, {
     message: "You must select at least one item.",
   }),
 });
+
+
+
 
 const AllOrders = ({ page, account }) => {
   const { isPending, error, data, isFetching } = useQuery({
@@ -77,6 +78,9 @@ const AllOrders = ({ page, account }) => {
   // Get all order IDs
   const allOrderIds = data?.map(order => order.orderId) || [];
 
+
+  //console.log(data)
+
   const toggleSelectAll = useCallback(() => {
     if (selectedItems.length === allOrderIds.length) {
       form.setValue('selectedItems', []);
@@ -84,24 +88,31 @@ const AllOrders = ({ page, account }) => {
       // Include address information when selecting all
       const allItemsWithAddress = data?.map(order => ({
         orderId: order.orderId,
-        ean: order.details?.[0]?.ean || '', // Taking first item's EAN as example
         address: {
-          firstName: order.details?.[0]?.s_firstName || '',
-          surname: order.details?.[0]?.s_surname || '',
-          streetName: order.details?.[0]?.s_streetName || '',
-          houseNumber: order.details?.[0]?.s_houseNumber || '',
-          houseNumberExtension: order.details?.[0]?.s_houseNumberExtension || '',
-          zipCode: order.details?.[0]?.s_zipCode || '',
-          city: order.details?.[0]?.s_city || ''
+          name: `${order.details?.[0]?.s_firstName} ${order.details?.[0]?.s_surname}` || '',
+          StreetName: order.details?.[0]?.s_streetName || '',
+          houseNumber: order.details?.[0]?.s_houseNumber || '' + ' ' + order.details?.[0]?.s_houseNumberExtension || '',
+          PostalCode: order.details?.[0]?.s_zipCode || '',
+          Locality: order.details?.[0]?.s_city || ''
         }
       })) || [];
       form.setValue('selectedItems', allItemsWithAddress);
     }
   }, [selectedItems, allOrderIds, data, form]);
 
+
+    // Debugging - log form state
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      console.log('Form update:', value, name, type);
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   const onSubmit = async (data) => {
     console.log('Form submitted with address info:', data);
     try {
+      SubmitForm(data)
       toast({
         title: "Submission successful",
         description: (
@@ -175,15 +186,12 @@ const AllOrders = ({ page, account }) => {
                                     // Add order with address information when checked
                                     const newItem = {
                                       orderId: order.orderId,
-                                      ean: order.details?.[0]?.ean || '', // Taking first item's EAN
                                       address: {
-                                        firstName: order.details?.[0]?.s_firstName || '',
-                                        surname: order.details?.[0]?.s_surname || '',
-                                        streetName: order.details?.[0]?.s_streetName || '',
-                                        houseNumber: order.details?.[0]?.s_houseNumber || '',
-                                        houseNumberExtension: order.details?.[0]?.s_houseNumberExtension || '',
-                                        zipCode: order.details?.[0]?.s_zipCode || '',
-                                        city: order.details?.[0]?.s_city || ''
+                                        name: `${order.details?.[0]?.s_firstName} ${order.details?.[0]?.s_surname}` || '',
+                                        StreetName: order.details?.[0]?.s_streetName || '',
+                                        houseNumber: order.details?.[0]?.s_houseNumber || '' + order.details?.[0]?.s_houseNumberExtension || '',
+                                        PostalCode: order.details?.[0]?.s_zipCode || '',
+                                        Locality: order.details?.[0]?.s_city || ''
                                       }
                                     };
                                     field.onChange([...currentValue, newItem]);
@@ -238,23 +246,12 @@ const AllOrders = ({ page, account }) => {
                                 {odr.quantity}
                               </h1>
                             </CardTitle>
-                            <CardDescription>
-                              <h1>
-                                {odr.s_firstName} {odr.s_surname}
-                              </h1>
-                              <p>
-                                {odr.s_streetName} {odr.s_houseNumber} {odr.s_houseNumberExtension}
-                              </p>
-                              <p>
-                                {odr.s_zipCode} {odr.s_city}
-                              </p>
-                              <p>{odr.method}</p>
-                            </CardDescription>
                           </div>
                         </div>
                       </CardContent>
 
                       <CardFooter>
+                                                    
                         {odr.distributionParty == 'BOL' ? '' : (
                           <div onClick={(e) => e.preventDefault()}>
                             <LabelButtonQLS odr={odr} />
@@ -262,8 +259,24 @@ const AllOrders = ({ page, account }) => {
                         )}
                       </CardFooter>
                     </Suspense>
+
+
                   </div>
                 ))}
+
+<CardDescription>
+                              <h1>
+                                {order.details?.[0]?.s_firstName} {order.details?.[0]?.s_surname}
+                              </h1>
+                              <p>
+                                {order.details?.[0]?.s_streetName} {order.details?.[0]?.s_houseNumber} {order.details?.[0]?.s_houseNumberExtension}
+                              </p>
+                              <p>
+                                {order.details?.[0]?.s_zipCode} {order.details?.[0]?.s_city}
+                              </p>
+                              <p>{order.details?.[0]?.method}</p>
+                            </CardDescription>
+
               </Card>
             </li>
           ))}

@@ -12,7 +12,7 @@ function extractShipmentDetails(details) {
     s_surname: details?.surname || '',
     s_streetName: details?.streetName || '',
     s_houseNumber: details?.houseNumber || '',
-    s_houseNumberExtended: details?.houseNumberExtended || null,
+    s_houseNumberExtension: details?.houseNumberExtension || null,
     s_zipCode: details?.zipCode || '',
     s_city: details?.city || '',
     s_countryCode: details?.countryCode || '',
@@ -28,7 +28,7 @@ function extractBillingDetails(details) {
     b_surname: details?.surname || '',
     b_streetName: details?.streetName || '',
     b_houseNumber: details?.houseNumber || '',
-    b_houseNumberExtended: details?.houseNumberExtended || null,
+    b_houseNumberExtension: details?.houseNumberExtension || null,
     b_zipCode: details?.zipCode || '',
     b_city: details?.city || '',
     b_countryCode: details?.countryCode || '',
@@ -72,26 +72,6 @@ export const Token = async (account) => {
     account: account,
   };
 };
-
-// export const Orders = async (page, account) => {
-//   const tok = await Token(account);
-//   const token = tok.token;
-
-//   const response = await fetch(
-//     `${process.env.BOLAPI}retailer/orders?page=${page}`,
-//     {
-//       method: 'GET',
-//       cache: 'no-store',
-//       headers: {
-//         Accept: 'application/vnd.retailer.v10+json',
-//         Authorization: 'Bearer ' + token,
-//       },
-//     }
-//   );
-
-//   const p = await response.json();
-//   return p.orders || [];
-// };
 
 const AddDBImage = async (ean, image) => {
   await prisma.images.upsert({
@@ -278,12 +258,12 @@ export const LabelQLS = async (odr) => {
   return lab;
 };
 
-const SubmitForm = async (value) => {
+export const SubmitForm = async (value) => {
   console.log('Form submitted: ', value);
   return { success: true, message: 'Form submitted successfully' };
 };
 
-export default SubmitForm;
+//export default SubmitForm;
 
 /// working orders!
 
@@ -312,6 +292,8 @@ export const ComboOrders = async (page, account) => {
   // Process all orders in parallel
   const orderPromises = p.orders.map((odr) => OrderBol(odr.orderId, account));
   const orderDetails = await Promise.all(orderPromises);
+
+  //console.log(orderDetails);
 
   // Combine orderId with its details
   const result = p.orders.map((odr, index) => ({
