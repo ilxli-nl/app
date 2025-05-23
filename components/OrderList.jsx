@@ -1,161 +1,268 @@
-"use client"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card"
-import { useForm } from '@tanstack/react-form'
-import { ComboOrders, submitToShipping } from '@/app/actions/actions'
-import { useQuery } from '@tanstack/react-query'
-import { Checkbox } from "./ui/checkbox"
-import { useState } from 'react'
+'use client'
+import { ComboOrders } from '../app/actions/actions';
+import { useQuery } from '@tanstack/react-query';
+import { Suspense, useCallback, useEffect  } from 'react';
+import Img from './img';
+import LabelButtonQLS from './QLS_button';
+import Link from 'next/link';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
+import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
-const OrderList = () => {
-  const page = 1
-  const account = 'BE'
-  const [submissionResult, setSubmissionResult] = useState(null)
-
-  // Fetch orders data
-  const { isPending, error, data } = useQuery({
-    queryKey: ['Orders', page],
-    queryFn: () => ComboOrders(page, account),
-  })
-
-  // Initialize form with orders data
-  const form = useForm({
-    defaultValues: {
-      orders: data?.map(order => ({
-        id: order.details.orderId,
-        checked: false,
-        name: order.details.ean,
-        streetName: order.details.streetName,
-        number: order.details.number,
-        Locality: order.details.Locality,
-        PostalCode: order.details.PostalCode,
-        CountryCode: order.details.CountryCode,
-        PhoneNumber: order.details.PhoneNumber,
-        Email: order.details.Email,
-        OrderReference: order.details.OrderReference,
-        Shipping: order.details.Shipping,
-      })) || [],
-      selectAll: false
-    },
-    onSubmit: async ({ value }) => {
-      const ordersToShip = value.orders
-        .filter(order => order.checked)
-        .map(order => ({
-          orderId: order.id,
-          name: order.name,
-          address: `${order.streetName} ${order.number}, ${order.PostalCode} ${order.Locality}`
-        }))
-
-      if (ordersToShip.length === 0) {
-        setSubmissionResult('Please select at least one order to ship')
-        return
-      }
-
-      try {
-        const result = await submitToShipping(ordersToShip)
-        setSubmissionResult(result.message)
-      } catch (error) {
-        console.error('Shipping submission error:', error)
-        setSubmissionResult('Failed to submit orders. Please try again.')
-      }
-    }
-  })
-
-  // Handle select all checkbox
-  const handleSelectAll = (checked) => {
-    const currentOrders = form.getFieldValue('orders')
-    form.setFieldValue('selectAll', checked)
-    form.setFieldValue('orders', currentOrders.map(order => ({
-      ...order,
-      checked
-    })))
+ const formatter = new Intl.DateTimeFormat('nl-NL')
+  function isValidDate(d) {
+    const date = new Date(d)
+    return d && !isNaN(date)
   }
 
-  if (isPending) return <div className="p-4">Loading...</div>
-  if (error) return <div className="p-4">No Orders Found</div>
 
-  const orders = form.getFieldValue('orders')
-  const selectAll = form.getFieldValue('selectAll')
+const FormSchema = z.object({
+  selectedItems: z.array(z.string()).min(1, {
+    message: "You must select at least one item.",
+  }),
+});
 
+const AllOrders = ({ page, account }) => {
+  const { isPending, error, data, isFetching } = useQuery({
+    queryKey: ['Orders', page],
+    queryFn: () => ComboOrders(page, account),
+  });
 
-  console.log(orders)
+  const form = useForm({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      selectedItems: [],
+    },
+    mode: 'onChange', // Validate on change
+  });
+
+  const selectedItems = useWatch({
+    control: form.control,
+    name: "selectedItems",
+  });
+
+  // Debugging - log form state
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      console.log('Form update:', value, name, type);
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  const allEANs = data?.flatMap(order => 
+    Array.isArray(order.details) 
+      ? order.details.map(detail => detail.ean) 
+      : []
+  ) || [];
+
+  const toggleSelectAll = useCallback(() => {
+    form.setValue(
+      'selectedItems',
+      selectedItems.length === allEANs.length ? [] : allEANs,
+      { shouldValidate: true }
+    );
+  }, [selectedItems, allEANs, form]);
+
+  const onSubmit = async (data) => {
+    console.log('Form submitted:', data); // Debug log
+    try {
+      toast({
+        title: "Submission successful",
+        description: (
+          <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+            <code className="text-white">{JSON.stringify(data, null, 2)}</code>
+          </pre>
+        ),
+      });
+    } catch (error) {
+      console.error('Submission error:', error);
+      toast({
+        title: "Submission failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isPending || isFetching) return 'Loading...';
+  if (error) return 'No Orders!';
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Order Shipping</h1>
-      
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          form.handleSubmit()
-        }}
-      >
-        {/* Select All checkbox */}
-        <div className="flex items-center mb-4 p-2 bg-gray-100 rounded">
-          <Checkbox
-            id="select-all"
-            checked={selectAll}
-            onCheckedChange={handleSelectAll}
-            className="mr-2"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Top Select All Checkbox */}
+        <div className="sticky top-0 bg-white p-4 border-b z-10">
+          <FormField
+            control={form.control}
+            name="selectedItems"
+            render={() => (
+              <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={selectedItems.length === allEANs.length && allEANs.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </FormControl>
+                <FormLabel className="text-sm font-medium">
+                  {selectedItems.length === allEANs.length ? 'Deselect All' : 'Select All'}
+                </FormLabel>
+                <span className="text-sm text-gray-500">
+                  {selectedItems.length} of {allEANs.length} selected
+                </span>
+              </FormItem>
+            )}
           />
-          <label htmlFor="select-all" className="font-medium">
-            Select All Orders
-          </label>
         </div>
 
-        {/* Orders list */}
-        <div className="space-y-4 mb-4">
-          {orders.map((order, index) => (
-            <Card key={order.id} className="border rounded-lg overflow-hidden">
-              <CardHeader className="flex items-center space-x-3 p-4 bg-gray-50">
-                <form.Field
-                  name={`orders.${index}.checked`}
-                  children={(field) => (
-                    <Checkbox
-                      id={`order-${order.id}`}
-                      checked={field.state.value}
-                      onCheckedChange={(checked) => {
-                        field.handleChange(checked)
-                        if (!checked && selectAll) {
-                          form.setFieldValue('selectAll', false)
-                        }
-                      }}
-                    />
-                  )}
-                />
-                <div>
-                  <CardTitle className="text-lg">{order.name}</CardTitle>
-                  <CardDescription>Order #{order.id}</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 space-y-2">
-                <p><span className="font-medium">Address:</span> {order.streetName} {order.number}, {order.PostalCode} {order.Locality}</p>
-                <p><span className="font-medium">Contact:</span> {order.PhoneNumber} | {order.Email}</p>
-                <p><span className="font-medium">Reference:</span> {order.OrderReference}</p>
-              </CardContent>
-            </Card>
+        <ul className="space-y-4">
+          {data.map((order) => (
+            <li key={order.orderId}>
+              <Card className='bg-zinc-50'>
+                <CardHeader>
+                  <CardTitle className='flex justify-between'>
+                    <div>
+                      <h1 className='text-2xl'>{order.orderId}</h1>
+                    </div>
+                    <div>
+                      <h2 className='text-5xl'>{account}</h2>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+
+                {(Array.isArray(order.details) ? order.details : []).map((odr) => (
+                  <div key={odr.ean}>
+                    <Suspense fallback={<p>Loading feed...</p>}>
+                      <CardContent className={odr.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''}>
+                        <div className='flex items-center'>
+                          <figure className={`${odr.method == 'BOL' ? 'bg-sky-500' : 'bg-orange-500'} p-3 rounded-md`}>
+                            <Suspense fallback={<p>Loading feed...</p>}>
+                              <Img ean={odr.ean} account={odr.account} />
+                            </Suspense>
+
+                            <figcaption className={`mt-2 p-4 text-l font-bold text-center text-white-900 dark:text-gray-900 ${
+                              odr.latestDeliveryDate ?? `bg-red-600 rounded-md`
+                            }`}>
+                              {odr.exactDeliveryDate
+                                ? `Exact: ${formatter.format(new Date(odr.exactDeliveryDate))}`
+                                : isValidDate(odr.latestDeliveryDate)
+                                ? `${formatter.format(new Date(odr.latestDeliveryDate))}`
+                                : 'Invalid date'}
+                            </figcaption>
+                          </figure>
+
+                          <div className='w-2/3'>
+                            <CardTitle className='flex items-center'>
+                              <h1 className='w-4/5 p-5'>
+                                {odr.title} <br />
+                                <br />
+                                <Link href={`https://www.bol.com/nl/nl/s/?searchtext=${odr.ean}`} target='_blank'>
+                                  <p className='text-blue-500'>EAN {odr.ean}</p>
+                                </Link>
+                              </h1>
+                              <h1 className={`${odr.quantity >= 2 ? 'bg-red-500' : 'bg-sky-500/100'} p-3 text-9xl w-1/5 p-5 text-center rounded-md`}>
+                                {odr.quantity}
+                              </h1>
+                            </CardTitle>
+                            <CardDescription>
+                              <h1>
+                                {odr.s_firstName} {odr.s_surname}
+                              </h1>
+                              <p>
+                                {odr.s_streetName} {odr.s_houseNumber} {odr.s_houseNumberExtension}
+                              </p>
+                              <p>
+                                {odr.s_zipCode} {odr.s_city}
+                              </p>
+                              <p>{odr.method}</p>
+
+                              <FormField
+                                control={form.control}
+                                name="selectedItems"
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(odr.ean)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([...field.value, odr.ean])
+                                            : field.onChange(field.value?.filter(value => value !== odr.ean))
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal">
+                                      Select this item
+                                    </FormLabel>
+                                  </FormItem>
+                                )}
+                              />
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardContent>
+
+                      <CardFooter>
+                        {odr.distributionParty == 'BOL' ? '' : (
+                          <div onClick={(e) => e.preventDefault()}>
+                            <LabelButtonQLS odr={odr} />
+                          </div>
+                        )}
+                      </CardFooter>
+                    </Suspense>
+                  </div>
+                ))}
+              </Card>
+            </li>
           ))}
-        </div>
+        </ul>
 
-        {/* Submit button */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-            disabled={form.state.isSubmitting}
-          >
-            {form.state.isSubmitting ? 'Submitting...' : 'Submit Selected Orders'}
-          </button>
-        </div>
-
-        {/* Submission result message */}
-        {submissionResult && (
-          <div className="mt-4 p-3 rounded bg-gray-100">
-            {submissionResult}
+        {/* Bottom Select All Checkbox and Submit Button */}
+        <div className="sticky bottom-0 bg-white p-4 border-t z-10">
+          <div className="flex justify-between items-center">
+            <FormField
+              control={form.control}
+              name="selectedItems"
+              render={() => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={selectedItems.length === allEANs.length && allEANs.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-medium">
+                    {selectedItems.length === allEANs.length ? 'Deselect All' : 'Select All'}
+                  </FormLabel>
+                  <span className="text-sm text-gray-500">
+                    {selectedItems.length} of {allEANs.length} selected
+                  </span>
+                </FormItem>
+              )}
+            />
+            <Button type="submit">Submit Selected Items</Button>
           </div>
-        )}
+        </div>
       </form>
-    </div>
-  )
+    </Form>
+  );
 }
 
-export default OrderList
+export default AllOrders;
