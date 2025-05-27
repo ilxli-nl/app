@@ -115,36 +115,62 @@ const AllOrders = ({ page, account }) => {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  const onSubmit = async (data) => {
-    console.log('Form submitted with address info:', data);
+const onSubmit = async (data) => {
+  try {
+    console.log('Form data:', data);
 
-
-
-    
-    try {
-      //SubmitForm(data)
-      createBpostLabel(data)
-
-      data?.map(createBpostLabel(data.selectedItems)) // deze moeten fixen
-
-      toast({
-        title: "Submission successful",
-        description: (
-          <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-            <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-          </pre>
-        ),
-        action: <ToastAction altText="Goto schedule to undo">Undo</ToastAction>,
-      });
-    } catch (error) {
-      console.error('Submission error:', error);
-      toast({
-        title: "Submission failed",
-        description: "Please try again.",
-        variant: "destructive",
-      });
+    if (!data.selectedItems || !data.selectedItems.length) {
+      throw new Error('No items selected for label creation');
     }
-  };
+   // console.dir( data)
+    // Transform data to match Postman's working format
+    const transformedItems = data.selectedItems.map(item => ({
+      Name: item.address?.name,
+      StreetName: item.address?.StreetName,
+      Number: item.address?.houseNumber,
+      Locality: item.address?.Locality,
+      PostalCode: item.address?.PostalCode,
+      CountryCode: item.address?.CountryCode || 'BE',
+    //  PhoneNumber: item.address?.phone,
+      Email: item.address?.Email,
+      OrderReference: item.orderId,
+      Shipping: item.address?.shipping || 'PRO'
+    }));
+
+    // Create labels sequentially (better for error handling)
+    const results = [];
+    for (const item of transformedItems) {
+      try {
+        const result = await createBpostLabel(item);
+        results.push(result);
+        console.log('Created label:', result);
+      } catch (error) {
+        console.error('Failed to create label for:', item.OrderReference, error);
+        // Continue with next items even if one fails
+      }
+    }
+
+    // Show success toast
+    toast({
+      title: `Created ${results.length}/${transformedItems.length} labels`,
+      description: results.length ? (
+        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+          <code className="text-white">
+            {JSON.stringify(results[0], null, 2)} {/* Show first result as example */}
+          </code>
+        </pre>
+      ) : 'No labels were created',
+    });
+
+  } catch (error) {
+    console.error('Submission failed:', error);
+    toast({
+      variant: "destructive",
+      title: "Label creation failed",
+      description: error.message,
+    });
+  }
+};
 
   if (isPending || isFetching) return 'Loading...';
   if (error) return 'No Orders!';

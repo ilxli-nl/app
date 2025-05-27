@@ -8,7 +8,7 @@ const Test = async ({ searchParams }) => {
 const session = await auth();
   const myRnId = () => parseInt(Date.now() * Math.random());
   const page = await searchParams['page'];
-  const account = 'NL'
+  const account = 'BE'
     if (session?.user.name == 'ilxli-nl') {
     return (
  
