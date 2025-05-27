@@ -44,7 +44,10 @@ const FormSchema = z.object({
       StreetName: z.string(),
       houseNumber: z.string(),
       PostalCode: z.string(),
-      Locality: z.string()
+      Locality: z.string(),
+      CountryCode: z.string(),
+      OrderReference: z.string(),
+      Email: z.string()
     })
   })).min(1, {
     message: "You must select at least one item.",
@@ -93,7 +96,10 @@ const AllOrders = ({ page, account }) => {
           StreetName: order.details?.[0]?.s_streetName || '',
           houseNumber: order.details?.[0]?.s_houseNumber || '' + ' ' + order.details?.[0]?.s_houseNumberExtension || '',
           PostalCode: order.details?.[0]?.s_zipCode || '',
-          Locality: order.details?.[0]?.s_city || ''
+          Locality: order.details?.[0]?.s_city || '',
+          CountryCode: order.details?.[0]?.s_countryCode || '',
+          OrderReference: order.orderId || '',
+          Email: order.details?.[0]?.email || '' 
         }
       })) || [];
       form.setValue('selectedItems', allItemsWithAddress);
@@ -111,9 +117,15 @@ const AllOrders = ({ page, account }) => {
 
   const onSubmit = async (data) => {
     console.log('Form submitted with address info:', data);
+
+
+
+    
     try {
       //SubmitForm(data)
       createBpostLabel(data)
+
+      data?.map(createBpostLabel(data.selectedItems)) // deze moeten fixen
 
       toast({
         title: "Submission successful",
@@ -194,7 +206,10 @@ const AllOrders = ({ page, account }) => {
                                         StreetName: order.details?.[0]?.s_streetName || '',
                                         houseNumber: order.details?.[0]?.s_houseNumber || '' + order.details?.[0]?.s_houseNumberExtension || '',
                                         PostalCode: order.details?.[0]?.s_zipCode || '',
-                                        Locality: order.details?.[0]?.s_city || ''
+                                        Locality: order.details?.[0]?.s_city || '',
+                                        CountryCode: order.details?.[0]?.s_countryCode || '',
+                                        OrderReference: order.orderId || '',
+                                        Email: order.details?.[0]?.email || '' 
                                       }
                                     };
                                     field.onChange([...currentValue, newItem]);

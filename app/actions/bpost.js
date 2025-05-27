@@ -1,69 +1,33 @@
-export async function createBpostLabel(formData) {
-  const apiUrl = 'https://bpost.ilxli.nl/label.php';
-
-  // Validate input
-  if (!formData || typeof formData.get !== 'function') {
-    throw new Error('Invalid form data provided');
-  }
-
-  // Prepare payload with fallbacks
-  const payload = {
-    Name: formData.get('name') || '',
-    StreetName: formData.get('streetName') || '',
-    Number: formData.get('number') || '',
-    Locality: formData.get('locality') || '',
-    PostalCode: formData.get('postalCode') || '',
-    CountryCode: formData.get('countryCode') || 'BE',
-    PhoneNumber: formData.get('phoneNumber') || '+32 0 000 00 00',
-    Email: formData.get('email') || '',
-    OrderReference: formData.get('orderReference') || '',
-    Shipping: formData.get('shipping') || 'bpack 24h pro',
-  };
-
+export async function createBpostLabel(item) {
   try {
-    console.log('Sending payload to bpost:', payload); // Debug log
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch('https://api.bpost.be/shipping/labels', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: 'Bearer YOUR_API_KEY', // if needed
       },
-      body: JSON.stringify(payload),
-      //credentials: 'include', // Include cookies if needed
+      body: JSON.stringify({
+        shipping: item.address.shipping || 'PRO',
+        // other required fields
+      }),
     });
-
-    console.log('Received response status:', response.status); // Debug log
 
     if (!response.ok) {
-      let errorText;
-      try {
-        errorText = await response.text();
-      } catch (e) {
-        errorText = 'Failed to read error response';
-      }
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      const errorData = await response.json();
+      console.error('API Error Details:', errorData);
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
-    try {
-      const data = await response.json();
-      console.log('API response data:', data); // Debug log
-      return data;
-    } catch (e) {
-      console.warn('Failed to parse JSON response, returning text');
-      return { success: true, rawResponse: await response.text() };
-    }
+    return await response.json();
   } catch (error) {
-    console.error('Full API error:', {
+    console.error('Full error details:', {
       error: error.message,
       stack: error.stack,
-      payload,
+      payload: item,
       timestamp: new Date().toISOString(),
     });
-
-    // More specific error messages
-    if (error.message.includes('Failed to fetch')) {
-      throw new Error('Network error: Could not connect to bpost server');
-    }
-    throw error;
+    throw new Error(
+      `Network error: Could not connect to bpost server. Details: ${error.message}`
+    );
   }
 }
