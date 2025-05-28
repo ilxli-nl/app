@@ -1,7 +1,5 @@
 import { auth } from '@/auth';
 import { SignInButton } from '@/components/sign-in-button';
-import AllOrders from '@/components/AllOrders';
-import Navbar from '@/components/navbar';
 
 export default async function Home() {
   // const t = await ComboOrders(1, 'NL');

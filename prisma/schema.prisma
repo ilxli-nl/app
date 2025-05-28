@@ -24,6 +24,13 @@ model Images {
   image String
 }
 
+model Labels {
+  order   String  @id @unique
+  Name    String
+  Address String
+  Barcode String?
+}
+
 model Orders {
   orderId                String
   orderItemId            String    @id @unique

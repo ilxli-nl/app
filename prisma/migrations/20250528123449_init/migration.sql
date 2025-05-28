@@ -25,6 +25,17 @@ CREATE TABLE `Images` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `Labels` (
+    `order` VARCHAR(191) NOT NULL,
+    `Name` VARCHAR(191) NOT NULL,
+    `Address` VARCHAR(191) NOT NULL,
+    `Barcode` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `Labels_order_key`(`order`),
+    PRIMARY KEY (`order`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `Orders` (
     `orderId` VARCHAR(191) NOT NULL,
     `orderItemId` VARCHAR(191) NOT NULL,

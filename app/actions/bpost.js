@@ -1,46 +1,82 @@
+'use server';
+import { prisma } from '@/prisma';
+
 export async function createBpostLabel(item) {
-  //const API_URL = 'https://api.bpost.be/services/shipping/rest'; // Verify exact endpoint
   const apiUrl = 'https://bpost.ilxli.nl/label.php';
-  //const API_KEY = process.env.NEXT_PUBLIC_BPOST_API_KEY; // From environment variables
 
-  console.dir(item);
+  // Simplified AddLabels function that matches your Prisma schema
+  const AddLabels = async (data) => {
+    console.log(data);
 
-  //  try {
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      // 'Authorization': `Bearer ${API_KEY}` // Add if required
-      // Add any other headers that Postman shows are needed
-    },
-    body: JSON.stringify({
-      Name: item.Name || item.name,
-      StreetName: item.StreetName || item.address?.street,
-      Number: item.Number || item.address?.number,
-      Locality: item.Locality || item.address?.city,
-      PostalCode: item.PostalCode || item.address?.postalCode,
-      CountryCode: item.CountryCode || 'BE', // Default to Belgium
-      //  PhoneNumber: item.PhoneNumber || item.phone,
-      Email: item.Email || item.email,
-      OrderReference: item.OrderReference || item.id,
-      Shipping: item.Shipping || item.address?.shipping || 'PRO',
-    }),
-  });
+    // Validate required fields
+    if (!data?.order) throw new Error('Missing order number');
+    if (!data?.Name) throw new Error('Missing customer name');
+    if (!data?.Address) throw new Error('Missing address');
 
-  console.log(response);
+    try {
+      return await prisma.labels.upsert({
+        where: { order: data.order },
+        update: {
+          Name: data.Name,
+          Address: data.Address,
+          ...(data.Barcode && { Barcode: data.Barcode }),
+        },
+        create: {
+          order: data.order,
+          Name: data.Name,
+          Address: data.Address,
+          ...(data.Barcode && { Barcode: data.Barcode }),
+        },
+      });
+    } catch (error) {
+      console.error('Database error:', error);
+      throw new Error(`Failed to save label: ${error.message}`);
+    }
+  };
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API Error ${response.status}: ${errorText}`);
+  try {
+    // 1. Create bpost label
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Name: item.Name || item.customer?.name,
+        StreetName: item.StreetName || item.address?.street,
+        Number: item.Number || item.address?.number,
+        Locality: item.Locality || item.address?.city,
+        PostalCode: item.PostalCode || item.address?.postalCode,
+        CountryCode: item.CountryCode || 'BE',
+        Email: item.Email || item.customer?.email,
+        OrderReference: item.OrderReference || item.orderId,
+        Shipping: item.Shipping || item.address?.shipping || 'PRO',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API Error ${response.status}: ${await response.text()}`);
+    }
+
+    const apiResponse = await response.json();
+    console.log('API Response:', apiResponse);
+
+    // 2. Prepare data for database
+    const dbData = {
+      order: apiResponse.order || '',
+      Name: apiResponse.Name || '',
+      Address: apiResponse.Adres || '',
+      Barcode: apiResponse.Barcode || null,
+    };
+
+    // 3. Save to database
+    const dbResult = await AddLabels(dbData);
+    console.log('Database result:', dbResult);
+
+    return {
+      apiResponse,
+      dbResult,
+    };
+  } catch (error) {
+    console.error('Error in createBpostLabel:', error);
+    throw new Error(`Label creation failed: ${error.message}`);
   }
-
-  return await response.json();
-  // } catch (error) {
-  //   console.error('Label creation failed:', {
-  //     error: error.message,
-  //     payload: item,
-  //     timestamp: new Date().toISOString(),
-  //   });
-  //   throw new Error(`Failed to create label: ${error.message}`);
-  // }
 }

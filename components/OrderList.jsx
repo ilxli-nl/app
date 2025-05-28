@@ -29,6 +29,17 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { prisma } from '@/prisma';
+
+
 const formatter = new Intl.DateTimeFormat('nl-NL')
 function isValidDate(d) {
   const date = new Date(d)
@@ -176,6 +187,8 @@ const onSubmit = async (data) => {
   if (error) return 'No Orders!';
 
   return (
+    <>
+    <Dialog>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         {/* Top Select All Checkbox */}
@@ -353,11 +366,25 @@ const onSubmit = async (data) => {
                 </FormItem>
               )}
             />
-            <Button type="submit">Submit Selected Items</Button>
+            <Button type="submit">Submit Selected Items</Button>    
+             <DialogTrigger>Open</DialogTrigger>
           </div>
         </div>
       </form>
     </Form>
+
+              
+              <DialogContent className='bg-yellow-50'>
+                <DialogHeader>
+                  <DialogTitle>Are you absolutely sure?</DialogTitle>
+                  <DialogDescription>
+                    This action cannot be undone. This will permanently delete your account
+                    and remove your data from our servers.
+                  </DialogDescription>
+                </DialogHeader>
+              </DialogContent>
+            </Dialog>
+    </>
   );
 }
 
