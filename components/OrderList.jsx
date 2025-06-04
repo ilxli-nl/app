@@ -1,6 +1,6 @@
 'use client'
 import { ComboOrders, SubmitForm } from '@/app/actions/actions';
-import {createBpostLabel} from '@/app/actions/bpost'
+import { createBpostLabel, generateBpostPdf } from '@/app/actions/bpost';
 import { useQuery } from '@tanstack/react-query';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import Img from './img';
@@ -164,65 +164,55 @@ const AllOrders = ({ page, account }) => {
     }
   };
 
-  const handleGeneratePdf = async () => {
-    if (!selectedItems.length) {
-      toast({
-        variant: "destructive",
-        title: "No items selected",
-        description: "Please select at least one item to generate PDF",
-      });
-      return;
+  // Update your handleGeneratePdf function in AllOrders component
+const handleGeneratePdf = async () => {
+  if (!selectedItems.length) {
+    toast({
+      variant: "destructive",
+      title: "No items selected",
+      description: "Please select at least one item to generate PDF",
+    });
+    return;
+  }
+
+  setIsGeneratingPdf(true);
+
+  try {
+    // Prepare order references for the external API
+    const orderReferences = selectedItems.map(item => `Test${item.orderId}test`);
+
+    // Call the server action
+    const pdfBuffer = await generateBpostPdf(orderReferences);
+    
+    // Create a blob from the buffer
+    const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
+    
+    // Create a URL for the blob
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    
+    // Open in new window for printing
+    const newWindow = window.open(pdfUrl, '_blank');
+    if (!newWindow) {
+      throw new Error('Popup blocked. Please allow popups for this site.');
     }
 
-    setIsGeneratingPdf(true);
-    try {
-      // Prepare order references for the external API
-      const orderReferences = selectedItems.map(item => item.orderId);
+    toast({
+      title: "PDF Labels Generated",
+      description: "The Bpost labels PDF has been opened in a new window.",
+    });
 
-      // Call your external PHP API
-      const response = await fetch('https://your-php-server.com/generate-bpost-labels.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          OrderReference: orderReferences
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-
-      // Get the PDF blob from the response
-      const pdfBlob = await response.blob();
-      
-      // Create a URL for the blob
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      
-      // Open in new window for printing
-      const newWindow = window.open(pdfUrl, '_blank');
-      if (!newWindow) {
-        throw new Error('Popup blocked. Please allow popups for this site.');
-      }
-
-      toast({
-        title: "PDF Labels Generated",
-        description: "The Bpost labels PDF has been opened in a new window.",
-      });
-
-    } catch (error) {
-      console.error('PDF generation failed:', error);
-      toast({
-        variant: "destructive",
-        title: "PDF Generation Failed",
-        description: error.message,
-      });
-    } finally {
-      setIsGeneratingPdf(false);
-      setIsDialogOpen(false);
-    }
-  };
+  } catch (error) {
+    console.error('PDF generation failed:', error);
+    toast({
+      variant: "destructive",
+      title: "PDF Generation Failed",
+      description: error.message,
+    });
+  } finally {
+    setIsGeneratingPdf(false);
+    setIsDialogOpen(false);
+  }
+};
 
   if (isPending || isFetching) return 'Loading...';
   if (error) return 'No Orders!';
@@ -404,7 +394,7 @@ const AllOrders = ({ page, account }) => {
                       Generate Bpost Labels
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="sm:max-w-[425px] bg-red-0">
                     <DialogHeader>
                       <DialogTitle>Generate Bpost Labels</DialogTitle>
                       <DialogDescription>
