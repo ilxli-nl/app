@@ -36,6 +36,17 @@ CREATE TABLE `Labels` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `token` (
+    `id` VARCHAR(191) NOT NULL,
+    `dbtoken` VARCHAR(191) NULL,
+    `account` VARCHAR(191) NOT NULL,
+    `dbtime` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `token_id_key`(`id`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `Orders` (
     `orderId` VARCHAR(191) NOT NULL,
     `orderItemId` VARCHAR(191) NOT NULL,

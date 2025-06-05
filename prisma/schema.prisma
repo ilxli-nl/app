@@ -31,6 +31,13 @@ model Labels {
   Barcode String?
 }
 
+model token {
+  id      String  @id @unique
+  dbtoken String?
+  account String
+  dbtime  String?
+}
+
 model Orders {
   orderId                String
   orderItemId            String    @id @unique

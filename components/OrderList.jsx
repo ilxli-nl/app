@@ -2,7 +2,7 @@
 import { ComboOrders, SubmitForm } from '@/app/actions/actions';
 import { createBpostLabel, generateBpostPdf } from '@/app/actions/bpost';
 import { useQuery } from '@tanstack/react-query';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useMemo, Suspense, useCallback, useEffect, useState } from 'react';
 import Img from './img';
 import LabelButtonQLS from './QLS_button';
 import Link from 'next/link';
@@ -85,7 +85,8 @@ const AllOrders = ({ page, account }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  const allOrderIds = data?.map(order => order.orderId) || [];
+  // Wrap allOrderIds in useMemo
+const allOrderIds = useMemo(() => data?.map(order => order.orderId) || [], [data]);
 
   const toggleSelectAll = useCallback(() => {
     if (selectedItems.length === allOrderIds.length) {

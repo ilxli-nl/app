@@ -104,3 +104,26 @@ export async function generateBpostPdf(orderReferences) {
     throw error;
   }
 }
+export async function generateBpostPdf(orderReferences) {
+  try {
+    const response = await fetch('https://bpost.ilxli.nl/print.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        OrderReference: orderReferences,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    const pdfBuffer = await response.arrayBuffer();
+    return pdfBuffer;
+  } catch (error) {
+    console.error('PDF generation failed:', error);
+    throw error;
+  }
+}
