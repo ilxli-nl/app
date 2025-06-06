@@ -54,6 +54,7 @@ const FormSchema = z.object({
       PostalCode: z.string(),
       Locality: z.string(),
       CountryCode: z.string(),
+      orderItemId: z.string(), // Add this line
       OrderReference: z.string(),
       Email: z.string()
     })
@@ -95,14 +96,15 @@ const allOrderIds = useMemo(() => data?.map(order => order.orderId) || [], [data
       const allItemsWithAddress = data?.map(order => ({
         orderId: order.orderId,
         address: {
-          name: `${order.details?.[0]?.s_firstName} ${order.details?.[0]?.s_surname}` || '',
-          StreetName: order.details?.[0]?.s_streetName || '',
-          houseNumber: order.details?.[0]?.s_houseNumber || '' + ' ' + order.details?.[0]?.s_houseNumberExtension || '',
-          PostalCode: order.details?.[0]?.s_zipCode || '',
-          Locality: order.details?.[0]?.s_city || '',
-          CountryCode: order.details?.[0]?.s_countryCode || '',
-          OrderReference: order.orderId || '',
-          Email: order.details?.[0]?.email || '' 
+        name: `${order.details?.[0]?.s_firstName} ${order.details?.[0]?.s_surname}` || '',
+        StreetName: order.details?.[0]?.s_streetName || '',
+        houseNumber: order.details?.[0]?.s_houseNumber || '' + ' ' + order.details?.[0]?.s_houseNumberExtension || '',
+        PostalCode: order.details?.[0]?.s_zipCode || '',
+        Locality: order.details?.[0]?.s_city || '',
+        CountryCode: order.details?.[0]?.s_countryCode || '',
+        orderItemId: order.details?.[0]?.orderItemId || '', // Make sure this is included
+        OrderReference: order.orderId || '',
+        Email: order.details?.[0]?.email || '' 
         }
       })) || [];
       form.setValue('selectedItems', allItemsWithAddress);
@@ -116,23 +118,26 @@ const allOrderIds = useMemo(() => data?.map(order => order.orderId) || [], [data
     return () => subscription.unsubscribe();
   }, [form]);
 
+  console.log(data)
+
   const onSubmit = async (data) => {
     try {
       if (!data.selectedItems || !data.selectedItems.length) {
         throw new Error('No items selected for label creation');
       }
-
-      const transformedItems = data.selectedItems.map(item => ({
-        Name: item.address?.name,
-        StreetName: item.address?.StreetName,
-        Number: item.address?.houseNumber,
-        Locality: item.address?.Locality,
-        PostalCode: item.address?.PostalCode,
-        CountryCode: item.address?.CountryCode || 'BE',
-        Email: item.address?.Email,
-        OrderReference: item.orderId,
-        Shipping: item.address?.shipping || 'PRO'
-      }));
+console.log(selectedItems)
+        const transformedItems = data.selectedItems.map(item => ({
+          Name: item.address?.name,
+          StreetName: item.address?.StreetName,
+          Number: item.address?.houseNumber,
+          Locality: item.address?.Locality,
+          PostalCode: item.address?.PostalCode,
+          CountryCode: item.address?.CountryCode || 'BE',
+          Email: item.address?.Email,
+          orderItemId: item.address?.orderItemId, // This should now work
+          OrderReference: item.orderId,
+          Shipping: item.address?.shipping || 'PRO'
+        }));
 
       const results = [];
       for (const item of transformedItems) {
@@ -248,6 +253,7 @@ const handleGeneratePdf = async () => {
 
           <ul className="space-y-4">
             {data.map((order) => (
+        
               <li key={order.orderId}>
                 <Card className='bg-zinc-50'>
                   <CardHeader>
@@ -266,16 +272,17 @@ const handleGeneratePdf = async () => {
                                       const currentValue = field.value || [];
                                       if (checked) {
                                         const newItem = {
-                                          orderId: order.orderId,
-                                          address: {
-                                            name: `${order.details?.[0]?.s_firstName} ${order.details?.[0]?.s_surname}` || '',
-                                            StreetName: order.details?.[0]?.s_streetName || '',
-                                            houseNumber: order.details?.[0]?.s_houseNumber || '' + order.details?.[0]?.s_houseNumberExtension || '',
-                                            PostalCode: order.details?.[0]?.s_zipCode || '',
-                                            Locality: order.details?.[0]?.s_city || '',
-                                            CountryCode: order.details?.[0]?.s_countryCode || '',
-                                            OrderReference: order.orderId || '',
-                                            Email: order.details?.[0]?.email || '' 
+                                            orderId: order.orderId,
+                                              address: {
+                                                name: `${order.details?.[0]?.s_firstName} ${order.details?.[0]?.s_surname}` || '',
+                                                StreetName: order.details?.[0]?.s_streetName || '',
+                                                houseNumber: order.details?.[0]?.s_houseNumber || '' + order.details?.[0]?.s_houseNumberExtension || '',
+                                                PostalCode: order.details?.[0]?.s_zipCode || '',
+                                                Locality: order.details?.[0]?.s_city || '',
+                                                CountryCode: order.details?.[0]?.s_countryCode || '',
+                                                orderItemId: order.details?.[0]?.orderItemId || '', // Make sure this is included
+                                                OrderReference: order.orderId || '',
+                                                Email: order.details?.[0]?.email || '' 
                                           }
                                         };
                                         field.onChange([...currentValue, newItem]);
@@ -326,6 +333,8 @@ const handleGeneratePdf = async () => {
                                   <Link href={`https://www.bol.com/nl/nl/s/?searchtext=${odr.ean}`} target='_blank'>
                                     <p className='text-blue-500'>EAN {odr.ean}</p>
                                   </Link>
+
+                                  <p>{odr.orderItemId}</p>
                                 </h1>
                                 <h1 className={`${odr.quantity >= 2 ? 'bg-red-500' : 'bg-sky-500/100'} p-3 text-9xl w-1/5 p-5 text-center rounded-md`}>
                                   {odr.quantity}
@@ -395,7 +404,7 @@ const handleGeneratePdf = async () => {
                       Generate Bpost Labels
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] bg-red-0">
+                  <DialogContent className="sm:max-w-[425px] bg-red-50">
                     <DialogHeader>
                       <DialogTitle>Generate Bpost Labels</DialogTitle>
                       <DialogDescription>
