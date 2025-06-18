@@ -25,10 +25,11 @@ model Images {
 }
 
 model Labels {
-  order   String  @id @unique
-  Name    String
-  Address String
-  Barcode String?
+  order       String  @id @unique
+  Name        String
+  Address     String
+  orderItemId String
+  Barcode     String?
 }
 
 model token {

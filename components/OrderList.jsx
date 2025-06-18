@@ -184,11 +184,12 @@ const handleGeneratePdf = async () => {
   setIsGeneratingPdf(true);
 
   try {
-    // Prepare order references for the external API
+    // Prepare order references and orderItemIds for the external API
     const orderReferences = selectedItems.map(item => `Test${item.orderId}test`);
+    const orderItemIds = selectedItems.map(item => item.address?.orderItemId || '');
 
-    // Call the server action
-    const pdfBuffer = await generateBpostPdf(orderReferences);
+    // Call the server action with both parameters
+    const pdfBuffer = await generateBpostPdf(orderReferences, orderItemIds);
     
     // Create a blob from the buffer
     const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
@@ -404,35 +405,36 @@ const handleGeneratePdf = async () => {
                       Generate Bpost Labels
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] bg-red-50">
-                    <DialogHeader>
-                      <DialogTitle>Generate Bpost Labels</DialogTitle>
-                      <DialogDescription>
-                        This will generate PDF labels for {selectedItems.length} selected orders using the Bpost API.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="text-sm">
-                        <p>The following order references will be sent to Bpost:</p>
-                        <ul className="mt-2 max-h-40 overflow-y-auto border rounded p-2">
-                          {selectedItems.map((item) => (
-                            <li key={item.orderId} className="py-1">
-                              {item.orderId}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button 
-                        type="button" 
-                        onClick={handleGeneratePdf}
-                        disabled={isGeneratingPdf || !selectedItems.length}
-                      >
-                        {isGeneratingPdf ? 'Generating Labels...' : 'Generate Labels'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
+                      <DialogContent className="sm:max-w-[425px] bg-red-50">
+                        <DialogHeader>
+                          <DialogTitle>Generate Bpost Labels</DialogTitle>
+                          <DialogDescription>
+                            This will generate PDF labels for {selectedItems.length} selected orders using the Bpost API.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="text-sm">
+                            <p>The following orders will be sent to Bpost:</p>
+                            <ul className="mt-2 max-h-40 overflow-y-auto border rounded p-2">
+                              {selectedItems.map((item) => (
+                                <li key={item.orderId} className="py-1 flex justify-between">
+                                  <span>Order: {item.orderId}</span>
+                                  <span className="text-gray-500">Item: {item.address?.orderItemId || 'N/A'}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            type="button" 
+                            onClick={handleGeneratePdf}
+                            disabled={isGeneratingPdf || !selectedItems.length}
+                          >
+                            {isGeneratingPdf ? 'Generating Labels...' : 'Generate Labels'}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
                 </Dialog>
               </div>
             </div>
