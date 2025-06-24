@@ -95,3 +95,66 @@ CREATE TABLE `Orders` (
     UNIQUE INDEX `Orders_orderItemId_key`(`orderItemId`),
     PRIMARY KEY (`orderItemId`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `Product` (
+    `id` VARCHAR(191) NOT NULL,
+    `ean` VARCHAR(191) NOT NULL,
+    `name` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `Product_ean_key`(`ean`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `WarehouseLocation` (
+    `id` VARCHAR(191) NOT NULL,
+    `code` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `WarehouseLocation_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ProductLocation` (
+    `id` VARCHAR(191) NOT NULL,
+    `productId` VARCHAR(191) NOT NULL,
+    `locationId` VARCHAR(191) NOT NULL,
+    `quantity` INTEGER NOT NULL DEFAULT 1,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `ProductLocation_productId_locationId_key`(`productId`, `locationId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ProductLocationHistory` (
+    `id` VARCHAR(191) NOT NULL,
+    `recordId` VARCHAR(191) NOT NULL,
+    `userId` VARCHAR(191) NOT NULL,
+    `action` VARCHAR(191) NOT NULL,
+    `field` VARCHAR(191) NULL,
+    `oldValue` VARCHAR(191) NULL,
+    `newValue` VARCHAR(191) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `productLocationId` VARCHAR(191) NULL,
+
+    INDEX `ProductLocationHistory_recordId_idx`(`recordId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `ProductLocation` ADD CONSTRAINT `ProductLocation_productId_fkey` FOREIGN KEY (`productId`) REFERENCES `Product`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ProductLocation` ADD CONSTRAINT `ProductLocation_locationId_fkey` FOREIGN KEY (`locationId`) REFERENCES `WarehouseLocation`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ProductLocationHistory` ADD CONSTRAINT `ProductLocationHistory_productLocationId_fkey` FOREIGN KEY (`productLocationId`) REFERENCES `ProductLocation`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

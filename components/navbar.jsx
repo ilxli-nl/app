@@ -66,6 +66,15 @@ const Navbar = () => {
                   Orders NEW
                 </Link>
 
+ <Link
+                  href='/warehouse'
+                  className={`${
+                    pathname === '/warehouse' ? 'bg-black' : ''
+                  } text-white hover:bg-gray-900 hover:text-white rounded-md px-3 py-2`}
+                >
+                  Warehouse
+                </Link>
+
        
                 <button
                   className={`${
