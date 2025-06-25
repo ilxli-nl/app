@@ -4,7 +4,6 @@ CREATE TABLE `User` (
     `email` VARCHAR(191) NOT NULL,
     `username` VARCHAR(191) NOT NULL,
     `displayName` VARCHAR(191) NULL,
-    `job` VARCHAR(191) NULL,
     `img` VARCHAR(191) NULL,
     `cover` VARCHAR(191) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -155,6 +154,9 @@ ALTER TABLE `ProductLocation` ADD CONSTRAINT `ProductLocation_productId_fkey` FO
 
 -- AddForeignKey
 ALTER TABLE `ProductLocation` ADD CONSTRAINT `ProductLocation_locationId_fkey` FOREIGN KEY (`locationId`) REFERENCES `WarehouseLocation`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ProductLocationHistory` ADD CONSTRAINT `ProductLocationHistory_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `ProductLocationHistory` ADD CONSTRAINT `ProductLocationHistory_productLocationId_fkey` FOREIGN KEY (`productLocationId`) REFERENCES `ProductLocation`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

@@ -5,27 +5,37 @@ import {
   assignProductToLocation,
   getProductsAndLocations,
 } from '@/components/warehouse/actions';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function AssignProductForm() {
   const [state, formAction] = useActionState(assignProductToLocation, null);
   const [products, setProducts] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    async function fetchData() {
-      const result = await getProductsAndLocations();
-      if (result) {
-        setProducts(result.products);
-        setLocations(result.locations);
+    async function loadData() {
+      try {
+        const result = await getProductsAndLocations();
+        if (result) {
+          setProducts(result.products || []);
+          setLocations(result.locations || []);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
       }
     }
-    fetchData();
+    loadData();
   }, []);
 
   return (
     <form
-      action={formAction}
+      action={async (formData) => {
+        setIsSubmitting(true);
+        const result = await formAction(formData);
+        setIsSubmitting(false);
+        return result;
+      }}
       className='max-w-md mx-auto p-4 bg-white rounded shadow'
     >
       <h2 className='text-xl font-bold mb-4'>Assign Product to Location</h2>
@@ -35,13 +45,14 @@ export default function AssignProductForm() {
           htmlFor='productId'
           className='block text-sm font-medium text-gray-700'
         >
-          Product
+          Product*
         </label>
         <select
           id='productId'
           name='productId'
           required
-          className='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+          disabled={isSubmitting}
+          className='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50'
         >
           <option value=''>Select a product</option>
           {products.map((product) => (
@@ -57,13 +68,14 @@ export default function AssignProductForm() {
           htmlFor='locationId'
           className='block text-sm font-medium text-gray-700'
         >
-          Location
+          Location*
         </label>
         <select
           id='locationId'
           name='locationId'
           required
-          className='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+          disabled={isSubmitting}
+          className='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50'
         >
           <option value=''>Select a location</option>
           {locations.map((location) => (
@@ -79,7 +91,7 @@ export default function AssignProductForm() {
           htmlFor='quantity'
           className='block text-sm font-medium text-gray-700'
         >
-          Quantity
+          Quantity*
         </label>
         <input
           type='number'
@@ -88,21 +100,32 @@ export default function AssignProductForm() {
           min='1'
           defaultValue='1'
           required
-          className='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
+          disabled={isSubmitting}
+          className='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50'
         />
       </div>
 
       <button
         type='submit'
-        className='w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
+        disabled={isSubmitting}
+        className={`w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+          isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
       >
-        Assign Product
+        {isSubmitting ? 'Assigning...' : 'Assign Product'}
       </button>
 
-      {state?.success && (
-        <p className='mt-2 text-green-600'>Product assigned successfully!</p>
+      {state?.message && (
+        <div
+          className={`mt-4 p-3 rounded-md ${
+            state.success
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}
+        >
+          <p>{state.message}</p>
+        </div>
       )}
-      {state?.error && <p className='mt-2 text-red-600'>{state.error}</p>}
     </form>
   );
 }

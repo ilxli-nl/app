@@ -1,13 +1,12 @@
 'use server';
-import { revalidatePath } from 'next/cache';
-import prisma from '@/lib/prisma';
-
 import { PrismaClient } from '@prisma/client';
+import { revalidatePath } from 'next/cache';
+import { getCurrentUser } from '@/lib/auth';
 
-// Helper function to get current user (implement based on your auth system)
-async function getCurrentUser() {
-  return 'user-id-from-session';
-}
+// const getCurrentUser = async () => {
+//   const session = await auth();
+//   return session?.user.name;
+// };
 
 // Get products and locations for dropdowns
 export async function getProductsAndLocations() {
@@ -29,57 +28,105 @@ export async function getProductsAndLocations() {
 
 // Assign product to location
 export async function assignProductToLocation(prevState, formData) {
+  const prisma = new PrismaClient();
   try {
+    // Validate form data
+    if (!formData || typeof formData.get !== 'function') {
+      throw new Error('Invalid form data received');
+    }
+
+    // Get current user with proper validation
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id) {
+      throw new Error('You must be logged in to perform this action');
+    }
+
+    // Validate user data
+    if (!currentUser.id || !currentUser.email || !currentUser.name) {
+      console.error('Invalid user data:', currentUser);
+      throw new Error('Invalid user authentication data');
+    }
+
+    // Get and validate form inputs
     const productId = formData.get('productId');
     const locationId = formData.get('locationId');
-    const quantity = parseInt(formData.get('quantity'));
-    const userId = await getCurrentUser();
+    const quantity = parseInt(formData.get('quantity') || '0');
 
-    // Check if assignment already exists
-    const existingAssignment = await prisma.productLocation.findFirst({
+    if (!productId || !locationId || isNaN(quantity) || quantity <= 0) {
+      throw new Error(
+        'Valid product, location, and positive quantity are required'
+      );
+    }
+
+    // Process user upsert with proper fields
+    const dbUser = await prisma.user.upsert({
       where: {
-        productId,
-        locationId,
+        id: currentUser.id,
+      },
+      update: {
+        email: currentUser.email,
+        username: currentUser.name,
+        img: currentUser.image,
+        updatedAt: new Date(),
+      },
+      create: {
+        id: currentUser.id,
+        email: currentUser.email,
+        username: currentUser.name,
+        displayName: currentUser.name,
+        img: currentUser.image,
       },
     });
 
+    // Process product assignment
+    const existingAssignment = await prisma.productLocation.findFirst({
+      where: { productId, locationId },
+    });
+
+    let result;
     if (existingAssignment) {
-      // Update quantity if exists
-      await prisma.productLocation.update({
+      result = await prisma.productLocation.update({
         where: { id: existingAssignment.id },
-        data: { quantity: existingAssignment.quantity + quantity },
+        data: { quantity: { increment: quantity } },
       });
     } else {
-      // Create new assignment
-      await prisma.productLocation.create({
-        data: {
-          productId,
-          locationId,
-          quantity,
-        },
+      result = await prisma.productLocation.create({
+        data: { productId, locationId, quantity },
       });
     }
 
-    // Create audit log
+    // Create history record
     await prisma.productLocationHistory.create({
       data: {
-        recordId: existingAssignment?.id || 'new-assignment',
-        userId,
+        recordId: result.id,
+        userId: dbUser.id,
         action: existingAssignment ? 'UPDATE' : 'CREATE',
         field: 'quantity',
         oldValue: existingAssignment?.quantity.toString() || '0',
-        newValue: (existingAssignment
-          ? existingAssignment.quantity + quantity
-          : quantity
-        ).toString(),
+        newValue: result.quantity.toString(),
+        createdAt: new Date(),
       },
     });
 
     revalidatePath('/warehouse');
-    return { success: true };
+    return {
+      success: true,
+      message: `Product assigned to location successfully`,
+      assignment: result,
+    };
   } catch (error) {
-    console.error('Error assigning product:', error);
-    return { error: error.message };
+    console.error('Assignment error:', {
+      message: error.message,
+      stack: error.stack,
+      time: new Date().toISOString(),
+    });
+    return {
+      success: false,
+      error: error.message,
+      message: `Assignment failed: ${error.message}`,
+    };
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -238,9 +285,11 @@ export async function scanLocation(prevState, formData) {
 }
 
 export async function scanProduct(prevState, formData) {
+  const prisma = new PrismaClient();
   try {
     const productEan = formData.get('productEan');
 
+    // First get the product with basic info
     const product = await prisma.product.findUnique({
       where: { ean: productEan },
       include: {
@@ -248,7 +297,6 @@ export async function scanProduct(prevState, formData) {
           include: {
             location: true,
             history: {
-              include: { user: { select: { username: true } } },
               orderBy: { createdAt: 'desc' },
               take: 5,
             },
@@ -257,11 +305,14 @@ export async function scanProduct(prevState, formData) {
       },
     });
 
+    if (!product) {
+      return { error: 'Product not found' };
+    }
+
+    // Then get the image separately
     const image = await prisma.images.findUnique({
       where: { ean: productEan },
     });
-
-    if (!product) return { error: 'Product not found' };
 
     return {
       product: {
@@ -271,10 +322,20 @@ export async function scanProduct(prevState, formData) {
         description: product.description,
         imageUrl: image?.image || null,
       },
-      locations: product.locations,
+      locations: product.locations.map((loc) => ({
+        ...loc,
+        history: loc.history.map((hist) => ({
+          ...hist,
+          // Add username if you need it (requires proper relation)
+          username: 'System', // Placeholder until you set up proper user relations
+        })),
+      })),
     };
   } catch (error) {
+    console.error('Product scan error:', error);
     return { error: error.message };
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
