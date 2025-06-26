@@ -84,6 +84,7 @@ model Orders {
   qls_time               DateTime?
 }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 model Product {
   id          String            @id @default(uuid())
@@ -133,5 +134,7 @@ model ProductLocationHistory {
 
   @@index([recordId])
 }
+=======
+>>>>>>> parent of 868da02 (Warehouse managment)
 =======
 >>>>>>> parent of 868da02 (Warehouse managment)
