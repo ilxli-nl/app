@@ -96,6 +96,7 @@ CREATE TABLE `Orders` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 <<<<<<<< HEAD:prisma/migrations/20250625124418_init/migration.sql
 <<<<<<<< HEAD:prisma/migrations/20250625124418_init/migration.sql
+<<<<<<<< HEAD:prisma/migrations/20250625124418_init/migration.sql
 
 -- CreateTable
 CREATE TABLE `Product` (
@@ -162,6 +163,8 @@ ALTER TABLE `ProductLocationHistory` ADD CONSTRAINT `ProductLocationHistory_user
 
 -- AddForeignKey
 ALTER TABLE `ProductLocationHistory` ADD CONSTRAINT `ProductLocationHistory_productLocationId_fkey` FOREIGN KEY (`productLocationId`) REFERENCES `ProductLocation`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+========
+>>>>>>>> parent of 868da02 (Warehouse managment):prisma/migrations/20250606103345_init/migration.sql
 ========
 >>>>>>>> parent of 868da02 (Warehouse managment):prisma/migrations/20250606103345_init/migration.sql
 ========

@@ -5,7 +5,7 @@ import {
   scanProduct,
   updateProductQuantity,
   moveProductLocation,
-} from '@/components/warehouse_bc/actions';
+} from '@/components/warehouse/actions';
 import { useState } from 'react';
 
 export default function ProductScanner() {

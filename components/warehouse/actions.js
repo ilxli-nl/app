@@ -2,13 +2,8 @@
 import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
+import { prisma } from '@/prisma';
 
-// const getCurrentUser = async () => {
-//   const session = await auth();
-//   return session?.user.name;
-// };
-
-// Get products and locations for dropdowns
 export async function getProductsAndLocations() {
   try {
     const [products, locations] = await Promise.all([
@@ -37,12 +32,12 @@ export async function assignProductToLocation(prevState, formData) {
 
     // Get current user with proper validation
     const currentUser = await getCurrentUser();
-    if (!currentUser?.id) {
+    if (!currentUser?.name) {
       throw new Error('You must be logged in to perform this action');
     }
 
     // Validate user data
-    if (!currentUser.id || !currentUser.email || !currentUser.name) {
+    if (!currentUser.name || !currentUser.email || !currentUser.name) {
       console.error('Invalid user data:', currentUser);
       throw new Error('Invalid user authentication data');
     }

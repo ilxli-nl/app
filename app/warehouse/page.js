@@ -1,100 +1,46 @@
-'use client';
-import { useState } from 'react';
-import {
-  getProductsAndLocations,
-  scanLocation,
-  scanProduct,
-} from '@/components/warehouse/actions'; //'@/components/warehouse/actions';
-import WarehouseDashboard from '@/components/warehouse/WarehouseDashboard';
-import ProductForm from '@/components/warehouse/ProductForm';
 import LocationForm from '@/components/warehouse/LocationForm';
-import AssignmentForm from '@/components/warehouse/AssignmentForm';
-import Scanner from '@/components/warehouse/Scanner';
+import ProductForm from '@/components/warehouse/ProductForm';
+import AssignProductForm from '@/components/warehouse/AssignProductForm';
+import LocationScanner from '@/components/warehouse/LocationScanner';
+import ProductScanner from '@/components/warehouse/ProductScanner';
 
 export default function WarehousePage() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [scanData, setScanData] = useState(null);
-  const [scanMode, setScanMode] = useState(null);
-
-  const handleScanSubmit = async (formData) => {
-    try {
-      let result;
-      if (scanMode === 'location') {
-        result = await scanLocation(null, formData);
-      } else {
-        result = await scanProduct(null, formData);
-      }
-      setScanData(result);
-    } catch (error) {
-      console.error('Scan error:', error);
-      setScanData({ error: error.message });
-    }
-  };
-
-  const renderTab = () => {
-    switch (activeTab) {
-      case 'products':
-        return <ProductForm />;
-      case 'locations':
-        return <LocationForm />;
-      case 'assign':
-        return <AssignmentForm />;
-      case 'scan':
-        return (
-          <Scanner
-            mode={scanMode}
-            onSubmit={handleScanSubmit}
-            result={scanData}
-            onModeChange={setScanMode}
-          />
-        );
-      default:
-        return <WarehouseDashboard />;
-    }
-  };
-
   return (
-    <div className='container mx-auto p-4'>
-      <h1 className='text-2xl font-bold mb-6'>Warehouse Management</h1>
+    <div className='container mx-auto px-4 py-8'>
+      <h1 className='text-3xl font-bold mb-8'>Warehouse Management</h1>
 
-      <div className='tabs mb-6'>
-        <button
-          className={`tab ${activeTab === 'dashboard' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          Dashboard
-        </button>
-        <button
-          className={`tab ${activeTab === 'products' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('products')}
-        >
-          Products
-        </button>
-        <button
-          className={`tab ${activeTab === 'locations' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('locations')}
-        >
-          Locations
-        </button>
-        <button
-          className={`tab ${activeTab === 'assign' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('assign')}
-        >
-          Assign Products
-        </button>
-        <button
-          className={`tab ${activeTab === 'scan' ? 'tab-active' : ''}`}
-          onClick={() => {
-            setActiveTab('scan');
-            setScanMode(null);
-            setScanData(null);
-          }}
-        >
-          Scanner
-        </button>
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+        <div className='space-y-8'>
+          <div className='bg-white p-6 rounded-lg shadow'>
+            <h2 className='text-xl font-bold mb-4'>Add New Location</h2>
+            <LocationForm />
+          </div>
+
+          <div className='bg-white p-6 rounded-lg shadow'>
+            <h2 className='text-xl font-bold mb-4'>Add New Product</h2>
+            <ProductForm />
+          </div>
+
+          <div className='bg-white p-6 rounded-lg shadow'>
+            <h2 className='text-xl font-bold mb-4'>Scan Product</h2>
+            <ProductScanner />
+          </div>
+        </div>
+
+        <div className='space-y-8'>
+          <div className='bg-white p-6 rounded-lg shadow'>
+            <h2 className='text-xl font-bold mb-4'>
+              Assign Product to Location
+            </h2>
+            <AssignProductForm />
+          </div>
+
+          <div className='bg-white p-6 rounded-lg shadow'>
+            <h2 className='text-xl font-bold mb-4'>Scan Location</h2>
+            <LocationScanner />
+          </div>
+        </div>
       </div>
-
-      {renderTab()}
     </div>
   );
 }
