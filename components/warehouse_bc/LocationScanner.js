@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { scanLocation } from '@/components/warehouse/actions';
+import { scanLocation } from '@/components/warehouse_bc/actions';
 import { useState } from 'react';
 
 export default function LocationScanner() {

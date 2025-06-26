@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import {
   assignProductToLocation,
   getProductsAndLocations,
-} from '@/components/warehouse/actions';
+} from '@/components/warehouse_bc/actions';
 import { useState, useEffect } from 'react';
 
 export default function AssignProductForm() {
