@@ -37,7 +37,7 @@ export async function assignProductToLocation(prevState, formData) {
     }
 
     // Validate user data
-    if (!currentUser.name || !currentUser.email || !currentUser.name) {
+    if (!currentUser.email) {
       console.error('Invalid user data:', currentUser);
       throw new Error('Invalid user authentication data');
     }
@@ -56,7 +56,7 @@ export async function assignProductToLocation(prevState, formData) {
     // Process user upsert with proper fields
     const dbUser = await prisma.user.upsert({
       where: {
-        id: currentUser.id,
+        id: currentUser.name,
       },
       update: {
         email: currentUser.email,
@@ -65,7 +65,7 @@ export async function assignProductToLocation(prevState, formData) {
         updatedAt: new Date(),
       },
       create: {
-        id: currentUser.id,
+        id: currentUser.name,
         email: currentUser.email,
         username: currentUser.name,
         displayName: currentUser.name,
@@ -94,7 +94,7 @@ export async function assignProductToLocation(prevState, formData) {
     await prisma.productLocationHistory.create({
       data: {
         recordId: result.id,
-        userId: dbUser.id,
+        userId: currentUser.name,
         action: existingAssignment ? 'UPDATE' : 'CREATE',
         field: 'quantity',
         oldValue: existingAssignment?.quantity.toString() || '0',
@@ -337,40 +337,38 @@ export async function scanProduct(prevState, formData) {
 // Modification Actions
 export async function updateProductQuantity(prevState, formData) {
   try {
-    const userId = await getCurrentUser();
+    const user = await getCurrentUser();
+    if (!user?.name) throw new Error('User authentication failed');
+
     const assignmentId = formData.get('assignmentId');
     const newQuantity = parseInt(formData.get('newQuantity'));
 
-    const current = await prisma.locationProduct.findUnique({
-      where: { id: assignmentId },
-      include: { product: true },
-    });
+    if (isNaN(newQuantity)) throw new Error('Invalid quantity');
 
-    const quantityDiff = newQuantity - current.quantity;
+    const result = await prisma.$transaction([
+      prisma.productLocation.update({
+        where: { id: assignmentId },
+        data: { quantity: newQuantity },
+        include: { product: true, location: true },
+      }),
+      prisma.productLocationHistory.create({
+        data: {
+          recordId: assignmentId,
+          action: 'UPDATE',
+          field: 'quantity',
+          oldValue: prevState?.currentQuantity?.toString() || '0',
+          newValue: newQuantity.toString(),
+          userId: user.name,
+        },
+      }),
+    ]);
 
-    await prisma.locationProduct.update({
-      where: { id: assignmentId },
-      data: { quantity: newQuantity },
-    });
-
-    await prisma.product.update({
-      where: { id: current.productId },
-      data: { quantity: { increment: quantityDiff } },
-    });
-
-    await prisma.locationProductHistory.create({
-      data: {
-        recordId: assignmentId,
-        userId,
-        action: 'UPDATE',
-        field: 'quantity',
-        oldValue: current.quantity.toString(),
-        newValue: newQuantity.toString(),
-      },
-    });
-
-    revalidatePath('/warehouse');
-    return { success: true };
+    return {
+      success: true,
+      updatedAssignment: result,
+      newQuantity: newQuantity,
+      currentQuantity: newQuantity,
+    };
   } catch (error) {
     return { error: error.message };
   }
@@ -378,57 +376,57 @@ export async function updateProductQuantity(prevState, formData) {
 
 export async function moveProductLocation(prevState, formData) {
   try {
-    const userId = await getCurrentUser();
+    // Verify Prisma client is available
+    if (!prisma) throw new Error('Prisma client not initialized');
+
+    const user = await getCurrentUser();
+    if (!user?.name) throw new Error('User authentication failed');
+
     const assignmentId = formData.get('assignmentId');
-    const newLocationId = formData.get('newLocationId');
+    const newLocationId = formData.get('locationCode');
 
-    const current = await prisma.locationProduct.findUnique({
-      where: { id: assignmentId },
-      include: { location: true, product: true },
+    if (!assignmentId) throw new Error('Missing assignment ID');
+    if (!newLocationId) throw new Error('Missing new location ID');
+
+    // Verify the new location exists
+    const locationExists = await prisma.warehouseLocation.findUnique({
+      where: { code: newLocationId },
     });
+    if (!locationExists) throw new Error('Location not found');
 
-    const newLocation = await prisma.location.findUnique({
-      where: { id: newLocationId },
-    });
-
-    const existing = await prisma.locationProduct.findFirst({
-      where: {
-        productId: current.productId,
-        locationId: newLocationId,
-      },
-    });
-
-    if (existing) {
-      await prisma.locationProduct.update({
-        where: { id: existing.id },
-        data: { quantity: existing.quantity + current.quantity },
-      });
-
-      await prisma.locationProduct.delete({
-        where: { id: assignmentId },
-      });
-    } else {
-      await prisma.locationProduct.update({
+    // Transaction for atomic updates
+    const [updatedAssignment] = await prisma.$transaction([
+      prisma.productLocation.update({
         where: { id: assignmentId },
         data: { locationId: newLocationId },
-      });
-    }
+        include: {
+          product: true,
+          location: true,
+        },
+      }),
+      prisma.productLocationHistory.create({
+        data: {
+          recordId: assignmentId,
+          action: 'MOVE',
+          field: 'location',
+          oldValue: prevState?.currentLocationId,
+          newValue: newLocationId,
+          userId: user.name,
+        },
+      }),
+    ]);
 
-    await prisma.locationProductHistory.create({
-      data: {
-        recordId: assignmentId,
-        userId,
-        action: 'MOVE',
-        field: 'location',
-        oldValue: current.location.code,
-        newValue: newLocation.code,
-      },
-    });
-
-    revalidatePath('/warehouse');
-    return { success: true };
+    return {
+      success: true,
+      message: 'Location updated successfully',
+      updatedAssignment,
+    };
   } catch (error) {
-    return { error: error.message };
+    console.error('Move location error:', error);
+    return {
+      error: error.message || 'Failed to move product location',
+      details: error,
+    };
   }
 }
 // Example function to get total product quantity

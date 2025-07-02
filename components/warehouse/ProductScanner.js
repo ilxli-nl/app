@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import {
   scanProduct,
   updateProductQuantity,
@@ -11,7 +11,7 @@ import { useState } from 'react';
 export default function ProductScanner() {
   const [state, formAction] = useActionState(scanProduct, null);
   const [scanMode, setScanMode] = useState(false);
-
+  const [locations, setLocations] = useState([]);
   return (
     <div className='max-w-md mx-auto p-4 bg-white rounded shadow'>
       <h2 className='text-xl font-bold mb-4'>Product Scanner</h2>
@@ -101,7 +101,7 @@ export default function ProductScanner() {
                         assignmentId={item.id}
                         currentQuantity={item.quantity}
                         currentLocationId={item.locationId}
-                        availableLocations={locations.filter(
+                        availableLocations={state.locations.filter(
                           (l) => l.id !== item.locationId
                         )}
                       />
@@ -155,18 +155,26 @@ export default function ProductScanner() {
 
 function ProductLocationActions({
   assignmentId,
-  currentQuantity,
+  currentQuantity: initialQuantity, // Rename prop for clarity
   currentLocationId,
   availableLocations,
 }) {
+  console.log('Received availableLocations:', availableLocations); // Debug log
+  const [quantity, setQuantity] = useState(initialQuantity);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showMoveForm, setShowMoveForm] = useState(false);
+
+  const handleUpdateSuccess = (newQuantity) => {
+    setQuantity(newQuantity); // Update the local state
+    setShowEditForm(false); // Close the form
+  };
 
   if (showEditForm) {
     return (
       <EditQuantityForm
         assignmentId={assignmentId}
-        currentQuantity={currentQuantity}
+        currentQuantity={quantity}
+        onSuccess={handleUpdateSuccess}
         onCancel={() => setShowEditForm(false)}
       />
     );
@@ -183,12 +191,13 @@ function ProductLocationActions({
   }
 
   return (
-    <div className='flex space-x-2'>
+    <div className='flex items-center gap-2'>
+      <span className='font-medium'>{quantity}</span>
       <button
         onClick={() => setShowEditForm(true)}
         className='px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded hover:bg-blue-200'
       >
-        Edit Qty
+        Edit
       </button>
       <button
         onClick={() => setShowMoveForm(true)}
@@ -200,77 +209,108 @@ function ProductLocationActions({
   );
 }
 
-function EditQuantityForm({ assignmentId, currentQuantity, onCancel }) {
+function EditQuantityForm({
+  assignmentId,
+  currentQuantity,
+  onSuccess,
+  onCancel,
+}) {
   const [state, formAction] = useActionState(updateProductQuantity, null);
+  const [quantity, setQuantity] = useState(currentQuantity);
+
+  useEffect(() => {
+    if (state?.success) {
+      onSuccess(state.newQuantity); // Update parent with new quantity
+    }
+  }, [state, onSuccess]);
 
   return (
-    <form action={formAction} className='ml-2'>
+    <form action={formAction} className='flex items-center gap-2'>
       <input type='hidden' name='assignmentId' value={assignmentId} />
-      <div className='flex items-center space-x-2'>
-        <input
-          type='number'
-          name='newQuantity'
-          defaultValue={currentQuantity}
-          min='1'
-          className='w-16 px-2 py-1 border border-gray-300 rounded text-sm'
-          required
-        />
-        <button
-          type='submit'
-          className='px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700'
-        >
-          Save
-        </button>
-        <button
-          type='button'
-          onClick={onCancel}
-          className='px-2 py-1 bg-gray-200 text-gray-800 text-xs rounded hover:bg-gray-300'
-        >
-          Cancel
-        </button>
-      </div>
-      {state?.error && (
-        <p className='text-red-500 text-xs mt-1'>{state.error}</p>
-      )}
+      <input
+        type='number'
+        name='newQuantity'
+        value={quantity}
+        onChange={(e) => setQuantity(Number(e.target.value))}
+        min='1'
+        className='w-16 px-2 py-1 border border-gray-300 rounded text-sm'
+      />
+      <button
+        type='submit'
+        className='px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700'
+      >
+        Save
+      </button>
+      <button
+        type='button'
+        onClick={onCancel}
+        className='px-2 py-1 bg-gray-200 text-gray-800 text-xs rounded hover:bg-gray-300'
+      >
+        Cancel
+      </button>
+      {state?.error && <p className='text-red-500 text-xs'>{state.error}</p>}
     </form>
   );
 }
-
-function MoveLocationForm({ assignmentId, availableLocations, onCancel }) {
+function MoveLocationForm({
+  assignmentId,
+  availableLocations,
+  onCancel,
+  onSuccess,
+}) {
   const [state, formAction] = useActionState(moveProductLocation, null);
+  const [selectedLocation, setSelectedLocation] = useState('');
+
+  useEffect(() => {
+    if (state?.success) {
+      onSuccess?.();
+    }
+  }, [state, onSuccess]);
 
   return (
-    <form action={formAction} className='ml-2'>
+    <form
+      action={formAction}
+      className='flex flex-col gap-2 p-2 border rounded'
+    >
       <input type='hidden' name='assignmentId' value={assignmentId} />
-      <div className='flex items-center space-x-2'>
+
+      <div className='flex items-center gap-2'>
         <select
           name='newLocationId'
-          className='px-2 py-1 border border-gray-300 rounded text-sm'
+          value={selectedLocation}
+          onChange={(e) => setSelectedLocation(e.target.value)}
+          className='flex-1 px-3 py-2 border rounded'
           required
         >
-          <option value=''>Select location</option>
+          <option value=''>Select new location</option>
           {availableLocations.map((location) => (
-            <option key={location.id} value={location.id}>
-              {location.code}
+            <option key={location.location.id} value={location.location.id}>
+              {location.location.code} -
+              {location.location.description || 'No description'}
             </option>
           ))}
         </select>
-        <button
-          type='submit'
-          className='px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700'
-        >
-          Move
-        </button>
+      </div>
+
+      <div className='flex gap-2 justify-end'>
         <button
           type='button'
           onClick={onCancel}
-          className='px-2 py-1 bg-gray-200 text-gray-800 text-xs rounded hover:bg-gray-300'
+          className='px-3 py-1 bg-gray-200 rounded'
         >
           Cancel
         </button>
+        <button
+          type='submit'
+          className='px-3 py-1 bg-green-600 text-white rounded'
+          disabled={!selectedLocation}
+        >
+          Confirm Move
+        </button>
       </div>
+
       {state?.error && (
-        <p className='text-red-500 text-xs mt-1'>{state.error}</p>
+        <p className='text-red-500 text-sm mt-1'>{state.error}</p>
       )}
     </form>
   );
