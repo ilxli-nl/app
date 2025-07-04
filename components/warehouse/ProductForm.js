@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { createProduct } from '@/components/warehouse/actions';
 import { useState } from 'react';
+import Image from 'next/image';
 
 export default function ProductForm() {
   const [state, formAction] = useActionState(createProduct, {});
@@ -85,7 +86,9 @@ export default function ProductForm() {
         />
         {imagePreview && (
           <div className='mt-2'>
-            <img
+            <Image
+              width={200}
+              height={200}
               src={imagePreview}
               alt='Preview'
               className='h-20 w-20 object-cover rounded'

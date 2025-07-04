@@ -7,6 +7,7 @@ import {
   moveProductLocation,
 } from '@/components/warehouse/actions';
 import { useState } from 'react';
+import Image from 'next/image';
 
 export default function ProductScanner() {
   const [state, formAction] = useActionState(scanProduct, null);
@@ -68,7 +69,9 @@ export default function ProductScanner() {
         <div className='mt-4 p-4 bg-gray-50 rounded'>
           <div className='flex items-start space-x-4'>
             {state.product.imageUrl && (
-              <img
+              <Image
+                width={200}
+                height={200}
                 src={state.product.imageUrl}
                 alt={state.product.name}
                 className='h-24 w-24 object-cover rounded'
