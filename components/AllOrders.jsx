@@ -41,7 +41,7 @@ const AllOrders = ({page, account}) => {//{ page, account }
  <ul>
           {data.map((order) => (
             <li key={order.orderId}>
-<Card key={`order-${data?.orderId}`} className='bg-zinc-50'>
+<Card key={`order-${data?.orderId}`} className='mx-auto max-w-md overflow-hidden rounded-xl bg-white shadow-md md:max-w-2xl'>
           <CardHeader>
             <CardTitle className='flex justify-between'>
               <div>
@@ -60,14 +60,14 @@ const AllOrders = ({page, account}) => {//{ page, account }
                 <Suspense fallback={<p>Loading feed...</p>}>
                   <CardContent
                     className={
-                      odr.quantity >= 2 ? 'border-8 border-red-700 pt-5' : ''
+                      odr.quantity >= 2 ? 'border-4 border-red-700 pt-5' : ''
                     }
                   >
-                    <div className='flex items-center'>
+                    <div className='flex flex-col w-full md:flex-row'>
                       <figure
                         className={` ${
                           odr.method == 'BOL' ? 'bg-sky-500' : 'bg-orange-500'
-                        }  p-3 rounded-md`}
+                        }  p-2 rounded-md`}
                       >
                         <Suspense fallback={<p>Loading feed...</p>}>
                           <Img ean={odr.ean} account={odr.account} />
@@ -88,7 +88,7 @@ const AllOrders = ({page, account}) => {//{ page, account }
                         </figcaption>
                       </figure>
 
-                      <div className='w-2/3'>
+                      <div className='w-full'>
                         <CardTitle className='flex items-center'>
                           <h1 className='w-4/5 p-5'>
                             {odr.title} <br />

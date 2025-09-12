@@ -1,7 +1,3 @@
-import LocationForm from '@/components/warehouse/LocationForm';
-import ProductForm from '@/components/warehouse/ProductForm';
-import AssignProductForm from '@/components/warehouse/AssignProductForm';
-import LocationScanner from '@/components/warehouse/LocationScanner';
 import ProductScanner from '@/components/warehouse/ProductScanner';
 
 export default function WarehousePage() {
