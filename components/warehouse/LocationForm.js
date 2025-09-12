@@ -38,7 +38,7 @@ export default function LocationForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className='max-w-md mx-auto p-4 bg-white rounded shadow'
+      className='max-w-lg mx-auto p-4 bg-white rounded shadow'
     >
       <h2 className='text-xl font-bold mb-4'>Add New Location</h2>
 

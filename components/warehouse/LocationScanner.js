@@ -9,7 +9,7 @@ export default function LocationScanner() {
   const [scanMode, setScanMode] = useState(false);
 
   return (
-    <div className='max-w-md mx-auto p-4 bg-white rounded shadow'>
+    <div className='max-w-lg mx-auto p-4 bg-white rounded shadow'>
       <h2 className='text-xl font-bold mb-4'>Location Scanner</h2>
 
       <button
