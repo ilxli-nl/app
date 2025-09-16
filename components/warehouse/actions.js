@@ -4,6 +4,21 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/prisma';
 
+export async function getProductImage(ean) {
+  try {
+    // This is a placeholder - you'll need to implement the actual database query
+    // using your preferred database client (Prisma, etc.)
+    const imageRecord = await prisma.images.findUnique({
+      where: { ean },
+    });
+
+    return imageRecord ? imageRecord.image : null;
+  } catch (error) {
+    console.error('Error fetching product image:', error);
+    return null;
+  }
+}
+
 export async function getProductsAndLocations() {
   try {
     const [products, locations] = await Promise.all([
