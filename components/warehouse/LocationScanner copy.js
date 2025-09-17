@@ -70,34 +70,10 @@ export default function LocationScanner() {
               <h4 className='font-bold'>Products at this location:</h4>
               <ul className='mt-2 space-y-2'>
                 {state.products.map((item) => (
-                  <li
-                    key={item.id}
-                    className='p-2 bg-white rounded shadow flex items-start'
-                  >
-                    {/* Product Image */}
-                    {state.productImages &&
-                    state.productImages[item.product.ean] ? (
-                      <img
-                        src={state.productImages[item.product.ean]}
-                        alt={item.product.name}
-                        className='w-12 h-12 object-contain mr-3 flex-shrink-0'
-                      />
-                    ) : (
-                      <div className='w-12 h-12 bg-gray-200 flex items-center justify-center mr-3 flex-shrink-0'>
-                        <span className='text-xs text-gray-500'>No image</span>
-                      </div>
-                    )}
-
-                    {/* Product Details */}
-                    <div className='flex-grow'>
-                      <p className='font-medium'>{item.product.name}</p>
-                      <p className='text-sm text-gray-600'>
-                        EAN: {item.product.ean}
-                      </p>
-                      <p className='text-sm text-gray-600'>
-                        Quantity: {item.quantity}
-                      </p>
-                    </div>
+                  <li key={item.id} className='p-2 bg-white rounded shadow'>
+                    <p className='font-medium'>{item.product.name}</p>
+                    <p>EAN: {item.product.ean}</p>
+                    <p>Quantity: {item.quantity}</p>
                   </li>
                 ))}
               </ul>

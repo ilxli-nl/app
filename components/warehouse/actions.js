@@ -4,18 +4,30 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/prisma';
 
-export async function getProductImage(ean) {
+export async function getProductImages(eans) {
   try {
-    // This is a placeholder - you'll need to implement the actual database query
-    // using your preferred database client (Prisma, etc.)
-    const imageRecord = await prisma.images.findUnique({
-      where: { ean },
+    if (!eans || !Array.isArray(eans) || eans.length === 0) {
+      return {};
+    }
+
+    const images = await prisma.images.findMany({
+      where: {
+        ean: {
+          in: eans,
+        },
+      },
     });
 
-    return imageRecord ? imageRecord.image : null;
+    // Convert to object with EAN as key
+    const imagesByEan = {};
+    images.forEach((image) => {
+      imagesByEan[image.ean] = image.image;
+    });
+
+    return imagesByEan;
   } catch (error) {
-    console.error('Error fetching product image:', error);
-    return null;
+    console.error('Error fetching product images:', error);
+    return {};
   }
 }
 
@@ -264,6 +276,38 @@ export async function createProduct(prevState, formData) {
 }
 
 // Scanning Actions
+// export async function scanLocation(prevState, formData) {
+//   try {
+//     const locationCode = formData.get('locationCode');
+
+//     const location = await prisma.warehouseLocation.findUnique({
+//       where: { code: locationCode },
+//       include: {
+//         products: {
+//           include: {
+//             product: true,
+//           },
+//         },
+//       },
+//     });
+
+//     if (!location) return { error: 'Location not found' };
+
+//     return {
+//       location: {
+//         id: location.id,
+//         code: location.code,
+//         description: location.description,
+//       },
+//       products: location.products,
+//     };
+//   } catch (error) {
+//     return { error: error.message };
+//   }
+// }
+
+// In your actions file (e.g., '@/components/warehouse/actions')
+
 export async function scanLocation(prevState, formData) {
   try {
     const locationCode = formData.get('locationCode');
@@ -281,6 +325,26 @@ export async function scanLocation(prevState, formData) {
 
     if (!location) return { error: 'Location not found' };
 
+    // Get EANs of all products at this location
+    const eans = location.products.map((item) => item.product.ean);
+
+    // Fetch images for these products
+    const productImages = {};
+    if (eans.length > 0) {
+      const images = await prisma.images.findMany({
+        where: {
+          ean: {
+            in: eans,
+          },
+        },
+      });
+
+      // Create a mapping of EAN to image
+      images.forEach((image) => {
+        productImages[image.ean] = image.image;
+      });
+    }
+
     return {
       location: {
         id: location.id,
@@ -288,6 +352,7 @@ export async function scanLocation(prevState, formData) {
         description: location.description,
       },
       products: location.products,
+      productImages, // Include the images in the response
     };
   } catch (error) {
     return { error: error.message };
