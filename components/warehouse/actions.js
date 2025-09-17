@@ -275,38 +275,75 @@ export async function createProduct(prevState, formData) {
   }
 }
 
-// Scanning Actions
-// export async function scanLocation(prevState, formData) {
-//   try {
-//     const locationCode = formData.get('locationCode');
+export async function getLocationProducts(locationCode) {
+  try {
+    const location = await prisma.warehouseLocation.findUnique({
+      where: { code: locationCode },
+      include: {
+        products: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
 
-//     const location = await prisma.warehouseLocation.findUnique({
-//       where: { code: locationCode },
-//       include: {
-//         products: {
-//           include: {
-//             product: true,
-//           },
-//         },
-//       },
-//     });
+    if (!location) {
+      return { error: 'Location not found' };
+    }
 
-//     if (!location) return { error: 'Location not found' };
+    return {
+      location: {
+        id: location.id,
+        code: location.code,
+        description: location.description,
+      },
+      products: location.products,
+    };
+  } catch (error) {
+    console.error('Error fetching location products:', error);
+    return { error: 'Failed to fetch location data' };
+  }
+}
 
-//     return {
-//       location: {
-//         id: location.id,
-//         code: location.code,
-//         description: location.description,
-//       },
-//       products: location.products,
-//     };
-//   } catch (error) {
-//     return { error: error.message };
-//   }
-// }
+export async function deleteProductFromLocation(productLocationId) {
+  try {
+    // First check if the product location exists
+    const productLocation = await prisma.productLocation.findUnique({
+      where: { id: productLocationId },
+    });
 
-// In your actions file (e.g., '@/components/warehouse/actions')
+    if (!productLocation) {
+      return { error: 'Product assignment not found' };
+    }
+
+    // Delete the product from the location
+    await prisma.productLocation.delete({
+      where: { id: productLocationId },
+    });
+
+    // Create a history record (optional)
+    // You might want to add this if you're tracking changes
+    // await prisma.productLocationHistory.create({
+    //   data: {
+    //     recordId: productLocationId,
+    //     userId: 'system', // You might want to pass the actual user ID
+    //     action: 'DELETE',
+    //     field: 'product_location',
+    //     oldValue: JSON.stringify(productLocation),
+    //     newValue: null,
+    //   },
+    // });
+
+    return {
+      success: true,
+      message: 'Product removed from location successfully',
+    };
+  } catch (error) {
+    console.error('Error deleting product from location:', error);
+    return { error: 'Failed to remove product from location' };
+  }
+}
 
 export async function scanLocation(prevState, formData) {
   try {
