@@ -4,6 +4,27 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/prisma';
 
+export async function getLocations() {
+  try {
+    const prisma = new PrismaClient();
+    const locations = await prisma.warehouseLocation.findMany({
+      select: {
+        id: true,
+        code: true,
+        description: true,
+      },
+      orderBy: {
+        code: 'asc',
+      },
+    });
+    await prisma.$disconnect();
+    return locations;
+  } catch (error) {
+    console.error('Error fetching locations:', error);
+    return [];
+  }
+}
+
 export async function getProductImages(eans) {
   try {
     if (!eans || !Array.isArray(eans) || eans.length === 0) {
@@ -480,6 +501,10 @@ export async function updateProductQuantity(prevState, formData) {
       }),
     ]);
 
+    // Add revalidation for both product and location pages
+    revalidatePath('/warehouse');
+    revalidatePath('/warehouse/location-scanner');
+
     return {
       success: true,
       updatedAssignment: result,
@@ -493,59 +518,89 @@ export async function updateProductQuantity(prevState, formData) {
 
 export async function moveProductLocation(prevState, formData) {
   try {
-    // Verify Prisma client is available
-    if (!prisma) throw new Error('Prisma client not initialized');
-
     const user = await getCurrentUser();
     if (!user?.name) throw new Error('User authentication failed');
 
     const assignmentId = formData.get('assignmentId');
-    const newLocationId = formData.get('locationCode');
+    const newLocationId = formData.get('newLocationId');
 
     if (!assignmentId) throw new Error('Missing assignment ID');
     if (!newLocationId) throw new Error('Missing new location ID');
 
-    // Verify the new location exists
-    const locationExists = await prisma.warehouseLocation.findUnique({
-      where: { code: newLocationId },
+    // Get the current assignment
+    const currentAssignment = await prisma.productLocation.findUnique({
+      where: { id: assignmentId },
+      include: {
+        location: true,
+      },
     });
-    if (!locationExists) throw new Error('Location not found');
 
-    // Transaction for atomic updates
-    const [updatedAssignment] = await prisma.$transaction([
-      prisma.productLocation.update({
+    if (!currentAssignment) {
+      throw new Error('Product assignment not found');
+    }
+
+    // Verify the new location exists
+    const newLocation = await prisma.warehouseLocation.findUnique({
+      where: { id: newLocationId },
+    });
+
+    if (!newLocation) throw new Error('New location not found');
+
+    // Check if product already exists at the new location
+    const existingAssignment = await prisma.productLocation.findFirst({
+      where: {
+        productId: currentAssignment.productId,
+        locationId: newLocationId,
+      },
+    });
+
+    let result;
+
+    if (existingAssignment) {
+      // If product already exists at new location, update quantity and delete old
+      result = await prisma.productLocation.update({
+        where: { id: existingAssignment.id },
+        data: {
+          quantity: existingAssignment.quantity + currentAssignment.quantity,
+        },
+      });
+
+      await prisma.productLocation.delete({
+        where: { id: assignmentId },
+      });
+    } else {
+      // If product doesn't exist at new location, move it
+      result = await prisma.productLocation.update({
         where: { id: assignmentId },
         data: { locationId: newLocationId },
-        include: {
-          product: true,
-          location: true,
-        },
-      }),
-      prisma.productLocationHistory.create({
-        data: {
-          recordId: assignmentId,
-          action: 'MOVE',
-          field: 'location',
-          oldValue: prevState?.currentLocationId,
-          newValue: newLocationId,
-          userId: user.name,
-        },
-      }),
-    ]);
+      });
+    }
 
+    // Create history record
+    await prisma.productLocationHistory.create({
+      data: {
+        recordId: assignmentId,
+        action: 'MOVE',
+        field: 'location',
+        oldValue: currentAssignment.location.code,
+        newValue: newLocation.code,
+        userId: user.name,
+      },
+    });
+
+    revalidatePath('/warehouse');
     return {
       success: true,
-      message: 'Location updated successfully',
-      updatedAssignment,
+      message: 'Product moved successfully',
     };
   } catch (error) {
     console.error('Move location error:', error);
     return {
       error: error.message || 'Failed to move product location',
-      details: error,
     };
   }
 }
+
 // Example function to get total product quantity
 export async function getProductTotalQuantity(productId) {
   const locations = await prisma.locationProduct.findMany({
@@ -557,28 +612,14 @@ export async function getProductTotalQuantity(productId) {
 }
 // Data Fetching Actions
 export async function getProducts() {
-  return await prisma.product.findMany({
-    select: { id: true, ean: true, name: true },
-  });
-}
-
-export async function getLocations() {
   try {
-    const prisma = new PrismaClient();
-    const locations = await prisma.warehouseLocation.findMany({
-      select: {
-        id: true,
-        code: true,
-        description: true,
-      },
-      orderBy: {
-        code: 'asc',
-      },
+    const products = await prisma.product.findMany({
+      select: { id: true, ean: true, name: true },
+      orderBy: { name: 'asc' },
     });
-    await prisma.$disconnect();
-    return locations;
+    return products;
   } catch (error) {
-    console.error('Error fetching locations:', error);
+    console.error('Error fetching products:', error);
     return [];
   }
 }

@@ -5,14 +5,115 @@ import {
   scanProduct,
   updateProductQuantity,
   moveProductLocation,
+  getLocations,
+  getProductImages,
+  getProducts, // Add this import
 } from '@/components/warehouse/actions';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 
 export default function ProductScanner() {
   const [state, formAction] = useActionState(scanProduct, null);
   const [scanMode, setScanMode] = useState(false);
-  const [locations, setLocations] = useState([]);
+  const [allLocations, setAllLocations] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+  const [productImages, setProductImages] = useState({});
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  // Fetch all locations and products on component mount using server actions
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch locations
+        const locations = await getLocations();
+        setAllLocations(locations);
+
+        // Fetch products using server action
+        const products = await getProducts();
+        setAllProducts(products);
+        setFilteredProducts(products);
+
+        // Fetch images for all products
+        const eans = products.map((p) => p.ean);
+        const imagesResult = await getProductImages(eans);
+        if (imagesResult) {
+          setProductImages(imagesResult);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    }
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    // Filter products based on search term
+    if (searchTerm.trim() === '') {
+      setFilteredProducts(allProducts);
+    } else {
+      const filtered = allProducts.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.ean.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredProducts(filtered);
+    }
+  }, [searchTerm, allProducts]);
+
+  useEffect(() => {
+    // Close dropdown when clicking outside
+    function handleClickOutside(event) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleProductSelect = (product) => {
+    setSelectedProduct(product);
+    setSearchTerm(product.ean); // Set the EAN for scanning
+    setShowDropdown(false);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setShowDropdown(true);
+    if (!e.target.value) {
+      setSelectedProduct(null);
+    }
+  };
+
+  const handleSearchFocus = () => {
+    if (filteredProducts.length > 0) {
+      setShowDropdown(true);
+    }
+  };
+
+  const handleManualSubmit = async (e) => {
+    e.preventDefault();
+    if (selectedProduct) {
+      // Create a form and submit it programmatically
+      const formData = new FormData();
+      formData.set('productEan', selectedProduct.ean);
+      await formAction(formData);
+    }
+  };
+
   return (
     <div className='max-w-md mx-auto p-4 bg-white rounded shadow'>
       <h2 className='text-xl font-bold mb-4'>Product Scanner</h2>
@@ -39,30 +140,69 @@ export default function ProductScanner() {
           </form>
         </div>
       ) : (
-        <form action={formAction} className='mb-4'>
-          <div>
+        <div className='mb-4'>
+          <div className='mb-4 relative' ref={searchRef}>
             <label
-              htmlFor='productEan'
+              htmlFor='productSearch'
               className='block text-sm font-medium text-gray-700'
             >
-              Product EAN
+              Search Product
             </label>
             <input
               type='text'
-              id='productEan'
-              name='productEan'
-              required
+              id='productSearch'
+              name='productSearch'
+              value={searchTerm}
+              onChange={handleSearchChange}
+              onFocus={handleSearchFocus}
+              placeholder='Search by product name or EAN'
               className='mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500'
-              placeholder='Enter product EAN/barcode'
             />
+
+            {showDropdown && filteredProducts.length > 0 && (
+              <div
+                ref={dropdownRef}
+                className='absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto'
+              >
+                {filteredProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    onClick={() => handleProductSelect(product)}
+                    className='flex items-center p-2 cursor-pointer hover:bg-gray-100'
+                  >
+                    {productImages[product.ean] ? (
+                      <img
+                        src={productImages[product.ean]}
+                        alt={product.name}
+                        className='w-10 h-10 object-contain mr-3'
+                      />
+                    ) : (
+                      <div className='w-10 h-10 bg-gray-200 flex items-center justify-center mr-3'>
+                        <span className='text-xs text-gray-500'>No image</span>
+                      </div>
+                    )}
+                    <div>
+                      <div className='font-medium'>{product.name}</div>
+                      <div className='text-sm text-gray-500'>
+                        EAN: {product.ean}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
           <button
-            type='submit'
-            className='mt-2 w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
+            onClick={handleManualSubmit}
+            disabled={!selectedProduct}
+            className={`w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+              !selectedProduct ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
             Search Product
           </button>
-        </form>
+        </div>
       )}
 
       {state?.product && (
@@ -104,9 +244,7 @@ export default function ProductScanner() {
                         assignmentId={item.id}
                         currentQuantity={item.quantity}
                         currentLocationId={item.locationId}
-                        availableLocations={state.locations.filter(
-                          (l) => l.id !== item.locationId
-                        )}
+                        allLocations={allLocations}
                       />
                     </div>
 
@@ -158,18 +296,32 @@ export default function ProductScanner() {
 
 function ProductLocationActions({
   assignmentId,
-  currentQuantity: initialQuantity, // Rename prop for clarity
+  currentQuantity: initialQuantity,
   currentLocationId,
-  availableLocations,
+  allLocations,
 }) {
-  console.log('Received availableLocations:', availableLocations); // Debug log
   const [quantity, setQuantity] = useState(initialQuantity);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showMoveForm, setShowMoveForm] = useState(false);
 
+  // Update local quantity when prop changes
+  useEffect(() => {
+    setQuantity(initialQuantity);
+  }, [initialQuantity]);
+
+  // Filter out the current location
+  const availableLocations = allLocations.filter(
+    (location) => location.id !== currentLocationId
+  );
+
   const handleUpdateSuccess = (newQuantity) => {
-    setQuantity(newQuantity); // Update the local state
-    setShowEditForm(false); // Close the form
+    setQuantity(newQuantity);
+    setShowEditForm(false);
+  };
+
+  const handleMoveSuccess = () => {
+    setShowMoveForm(false);
+    window.location.reload();
   };
 
   if (showEditForm) {
@@ -189,6 +341,7 @@ function ProductLocationActions({
         assignmentId={assignmentId}
         availableLocations={availableLocations}
         onCancel={() => setShowMoveForm(false)}
+        onSuccess={handleMoveSuccess}
       />
     );
   }
@@ -223,9 +376,14 @@ function EditQuantityForm({
 
   useEffect(() => {
     if (state?.success) {
-      onSuccess(state.newQuantity); // Update parent with new quantity
+      onSuccess(state.newQuantity);
     }
   }, [state, onSuccess]);
+
+  // Reset form when cancelled or when currentQuantity prop changes
+  useEffect(() => {
+    setQuantity(currentQuantity);
+  }, [currentQuantity]);
 
   return (
     <form action={formAction} className='flex items-center gap-2'>
@@ -246,7 +404,10 @@ function EditQuantityForm({
       </button>
       <button
         type='button'
-        onClick={onCancel}
+        onClick={() => {
+          setQuantity(currentQuantity); // Reset to original value
+          onCancel();
+        }}
         className='px-2 py-1 bg-gray-200 text-gray-800 text-xs rounded hover:bg-gray-300'
       >
         Cancel
@@ -255,6 +416,7 @@ function EditQuantityForm({
     </form>
   );
 }
+
 function MoveLocationForm({
   assignmentId,
   availableLocations,
@@ -287,9 +449,8 @@ function MoveLocationForm({
         >
           <option value=''>Select new location</option>
           {availableLocations.map((location) => (
-            <option key={location.location.id} value={location.location.id}>
-              {location.location.code} -
-              {location.location.description || 'No description'}
+            <option key={location.id} value={location.id}>
+              {location.code} - {location.description || 'No description'}
             </option>
           ))}
         </select>
