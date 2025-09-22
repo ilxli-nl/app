@@ -89,6 +89,7 @@ model Product {
   ean         String            @unique
   name        String            @db.VarChar(500)
   description String?           @db.VarChar(500)
+  imageUrl    String? // Add this field
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   locations   ProductLocation[]

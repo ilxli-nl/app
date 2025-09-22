@@ -27,10 +27,6 @@ export async function getLocations() {
 
 export async function getProductImages(eans) {
   try {
-    if (!eans || !Array.isArray(eans) || eans.length === 0) {
-      return {};
-    }
-
     const images = await prisma.images.findMany({
       where: {
         ean: {
@@ -39,13 +35,13 @@ export async function getProductImages(eans) {
       },
     });
 
-    // Convert to object with EAN as key
-    const imagesByEan = {};
-    images.forEach((image) => {
-      imagesByEan[image.ean] = image.image;
+    // Convert to a dictionary for easy lookup
+    const imageDict = {};
+    images.forEach((img) => {
+      imageDict[img.ean] = img.image;
     });
 
-    return imagesByEan;
+    return imageDict;
   } catch (error) {
     console.error('Error fetching product images:', error);
     return {};
@@ -292,6 +288,189 @@ export async function createProduct(prevState, formData) {
       success: false,
       error: error.message,
       message: `Failed to create product: ${error.message}`,
+    };
+  }
+}
+
+export async function updateProduct(prevState, formData) {
+  try {
+    const ean = formData.get('ean');
+    const name = formData.get('name');
+    const imageUrl = formData.get('imageUrl');
+    const description = formData.get('description');
+
+    const updatedProduct = await prisma.product.update({
+      where: { ean },
+      data: { name, imageUrl, description },
+    });
+
+    return {
+      success: true,
+      message: 'Product updated successfully',
+      product: updatedProduct,
+    };
+  } catch (error) {
+    console.error('Product update error:', error);
+    return {
+      success: false,
+      message: error.message,
+    };
+  }
+}
+
+export async function forceDeleteProduct(prevState, formData) {
+  try {
+    const ean = formData.get('ean');
+
+    if (!ean) {
+      return {
+        success: false,
+        message: 'EAN is required',
+      };
+    }
+
+    // Use a transaction to delete all related data
+    await prisma.$transaction(async (tx) => {
+      // Delete related history
+      await tx.productLocationHistory.deleteMany({
+        where: {
+          ProductLocation: {
+            product: {
+              ean: ean,
+            },
+          },
+        },
+      });
+
+      // Delete product locations
+      await tx.productLocation.deleteMany({
+        where: {
+          product: {
+            ean: ean,
+          },
+        },
+      });
+
+      // Delete related image
+      await tx.images.deleteMany({
+        where: { ean },
+      });
+
+      // Delete the product
+      await tx.product.delete({
+        where: { ean },
+      });
+    });
+
+    return {
+      success: true,
+      message: 'Product and all related data deleted successfully',
+    };
+  } catch (error) {
+    console.error('Force delete product error:', error);
+    return {
+      success: false,
+      message: 'Failed to delete product',
+      error: error.message,
+    };
+  }
+}
+
+export async function createOrUpdateProduct(prevState, formData) {
+  try {
+    // Check if formData is valid
+    if (!formData || typeof formData.get !== 'function') {
+      return {
+        success: false,
+        message: 'Invalid form data received',
+      };
+    }
+
+    const ean = formData.get('ean');
+    const name = formData.get('name');
+    const imageUrl = formData.get('imageUrl');
+    const description = formData.get('description');
+
+    // Validate required fields
+    if (!ean || !name) {
+      return {
+        success: false,
+        message: 'EAN and Product Name are required',
+      };
+    }
+
+    // Check if product exists
+    const existingProduct = await prisma.product.findUnique({
+      where: { ean },
+    });
+
+    let result;
+    if (existingProduct) {
+      // Update existing product
+      result = await prisma.product.update({
+        where: { ean },
+        data: {
+          name,
+          imageUrl: imageUrl || null,
+          description: description || null,
+        },
+      });
+    } else {
+      // Create new product
+      result = await prisma.product.create({
+        data: {
+          ean,
+          name,
+          imageUrl: imageUrl || null,
+          description: description || null,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: existingProduct
+        ? 'Product updated successfully'
+        : 'Product created successfully',
+      product: result,
+    };
+  } catch (caughtError) {
+    // Use a different variable name to avoid shadowing issues
+    const error = caughtError;
+
+    // Extract error information safely
+    const errorInfo = {
+      message: 'Unknown error occurred',
+      code: 'UNKNOWN',
+    };
+
+    if (error && typeof error === 'object') {
+      errorInfo.message = error.message || errorInfo.message;
+      errorInfo.code = error.code || errorInfo.code;
+    }
+
+    // Safe logging
+    try {
+      console.log(
+        'Product operation error:',
+        errorInfo.message,
+        errorInfo.code
+      );
+    } catch (loggingError) {
+      // Silently fail if console.log fails
+    }
+
+    let userMessage = 'An unexpected error occurred';
+    if (errorInfo.code === 'P2002') {
+      userMessage = 'A product with this EAN already exists';
+    } else if (errorInfo.code === 'P2025') {
+      userMessage = 'Product not found for update';
+    }
+
+    return {
+      success: false,
+      message: userMessage,
+      error: errorInfo.message,
     };
   }
 }
@@ -614,12 +793,105 @@ export async function getProductTotalQuantity(productId) {
 export async function getProducts() {
   try {
     const products = await prisma.product.findMany({
-      select: { id: true, ean: true, name: true },
-      orderBy: { name: 'asc' },
+      include: {
+        locations: {
+          include: {
+            location: true,
+            history: {
+              include: {
+                user: {
+                  select: {
+                    username: true,
+                    displayName: true,
+                  },
+                },
+              },
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 5,
+            },
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
     });
     return products;
   } catch (error) {
     console.error('Error fetching products:', error);
     return [];
+  }
+}
+export async function deleteProduct(prevState, formData) {
+  try {
+    const ean = formData.get('ean');
+
+    if (!ean) {
+      return {
+        success: false,
+        message: 'EAN is required to delete a product',
+      };
+    }
+
+    // First, check if the product exists
+    const existingProduct = await prisma.product.findUnique({
+      where: { ean },
+      include: {
+        locations: {
+          include: {
+            history: true,
+          },
+        },
+      },
+    });
+
+    if (!existingProduct) {
+      return {
+        success: false,
+        message: 'Product not found',
+      };
+    }
+
+    // Check if product has locations assigned
+    if (existingProduct.locations.length > 0) {
+      return {
+        success: false,
+        message:
+          'Cannot delete product - it is assigned to locations. Please remove from all locations first.',
+      };
+    }
+
+    // Delete related image if exists
+    await prisma.images.deleteMany({
+      where: { ean },
+    });
+
+    // Delete the product
+    await prisma.product.delete({
+      where: { ean },
+    });
+
+    return {
+      success: true,
+      message: 'Product deleted successfully',
+      deletedProduct: existingProduct,
+    };
+  } catch (error) {
+    console.error('Delete product error:', error);
+
+    let errorMessage = 'Failed to delete product';
+    if (error.code === 'P2025') {
+      errorMessage = 'Product not found';
+    } else if (error.code === 'P2003') {
+      errorMessage = 'Cannot delete product due to existing references';
+    }
+
+    return {
+      success: false,
+      message: errorMessage,
+      error: error.message,
+    };
   }
 }

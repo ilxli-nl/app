@@ -7,13 +7,15 @@ import {
   moveProductLocation,
   getLocations,
   getProductImages,
-  getProducts, // Add this import
+  getProducts,
+  deleteProduct,
 } from '@/components/warehouse/actions';
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 
 export default function ProductScanner() {
   const [state, formAction] = useActionState(scanProduct, null);
+  const [deleteState, deleteFormAction] = useActionState(deleteProduct, null);
   const [scanMode, setScanMode] = useState(false);
   const [allLocations, setAllLocations] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
@@ -22,6 +24,8 @@ export default function ProductScanner() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const searchRef = useRef(null);
   const dropdownRef = useRef(null);
 
@@ -50,6 +54,23 @@ export default function ProductScanner() {
     }
     fetchData();
   }, []);
+
+  // Refresh products after successful deletion
+  useEffect(() => {
+    if (deleteState?.success) {
+      // Refresh the products list
+      async function refreshProducts() {
+        const products = await getProducts();
+        setAllProducts(products);
+        setFilteredProducts(products);
+        setSelectedProduct(null);
+        setSearchTerm('');
+        setShowDeleteConfirm(false);
+        setIsDeleting(false);
+      }
+      refreshProducts();
+    }
+  }, [deleteState]);
 
   useEffect(() => {
     // Filter products based on search term
@@ -114,6 +135,20 @@ export default function ProductScanner() {
     }
   };
 
+  const handleDeleteProduct = async () => {
+    if (state?.product) {
+      setIsDeleting(true);
+      const formData = new FormData();
+      formData.set('ean', state.product.ean);
+      await deleteFormAction(formData);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setIsDeleting(false);
+  };
+
   return (
     <div className='max-w-md mx-auto p-4 bg-white rounded shadow'>
       <h2 className='text-xl font-bold mb-4'>Product Scanner</h2>
@@ -171,7 +206,7 @@ export default function ProductScanner() {
                     className='flex items-center p-2 cursor-pointer hover:bg-gray-100'
                   >
                     {productImages[product.ean] ? (
-                      <img
+                      <Image
                         src={productImages[product.ean]}
                         alt={product.name}
                         className='w-10 h-10 object-contain mr-3'
@@ -207,26 +242,88 @@ export default function ProductScanner() {
 
       {state?.product && (
         <div className='mt-4 p-4 bg-gray-50 rounded'>
-          <div className='flex items-start space-x-4'>
-            {state.product.imageUrl && (
-              <Image
-                width={200}
-                height={200}
-                src={state.product.imageUrl}
-                alt={state.product.name}
-                className='h-24 w-24 object-cover rounded'
-              />
-            )}
-            <div>
-              <h3 className='font-bold'>{state.product.name}</h3>
-              <p>EAN: {state.product.ean}</p>
-              <p className='mt-1 text-sm'>
-                {state.product.description || 'No description available'}
-              </p>
+          <div className='flex items-start justify-between mb-4'>
+            <div className='flex items-start space-x-4 flex-1'>
+              {state.product.imageUrl && (
+                <Image
+                  width={80}
+                  height={80}
+                  src={state.product.imageUrl}
+                  alt={state.product.name}
+                  className='h-20 w-20 object-cover rounded'
+                />
+              )}
+              <div className='flex-1'>
+                <h3 className='font-bold'>{state.product.name}</h3>
+                <p className='text-sm text-gray-600'>
+                  EAN: {state.product.ean}
+                </p>
+                <p className='mt-1 text-sm'>
+                  {state.product.description || 'No description available'}
+                </p>
+              </div>
             </div>
+
+            {/* Delete Button */}
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className='ml-4 px-3 py-1 bg-red-100 text-red-700 text-sm rounded hover:bg-red-200'
+            >
+              Delete
+            </button>
           </div>
 
-          {state.locations.length > 0 ? (
+          {/* Delete Confirmation Modal */}
+          {showDeleteConfirm && (
+            <div className='mt-4 p-4 bg-red-50 border border-red-200 rounded'>
+              <h4 className='font-bold text-red-800 mb-2'>Confirm Deletion</h4>
+              <p className='text-sm text-red-700 mb-3'>
+                Are you sure you want to delete {state.product.name} (EAN:{' '}
+                {state.product.ean})? This action cannot be undone.
+              </p>
+
+              {state.locations && state.locations.length > 0 && (
+                <p className='text-sm text-red-600 mb-3 font-medium'>
+                  ⚠️ This product is assigned to {state.locations.length}{' '}
+                  location(s). You must remove it from all locations before
+                  deleting.
+                </p>
+              )}
+
+              <div className='flex gap-2'>
+                <button
+                  onClick={handleDeleteProduct}
+                  disabled={state.locations && state.locations.length > 0}
+                  className={`px-3 py-1 text-sm rounded ${
+                    state.locations && state.locations.length > 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-red-600 text-white hover:bg-red-700'
+                  } ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                </button>
+                <button
+                  onClick={handleCancelDelete}
+                  disabled={isDeleting}
+                  className='px-3 py-1 bg-gray-200 text-gray-800 text-sm rounded hover:bg-gray-300 disabled:opacity-50'
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {deleteState?.message && (
+                <p
+                  className={`mt-2 text-sm ${
+                    deleteState.success ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
+                  {deleteState.message}
+                </p>
+              )}
+            </div>
+          )}
+
+          {state.locations && state.locations.length > 0 ? (
             <div className='mt-4'>
               <h4 className='font-bold'>
                 Locations where this product is stored:
@@ -248,7 +345,7 @@ export default function ProductScanner() {
                       />
                     </div>
 
-                    {item.history.length > 0 && (
+                    {item.history && item.history.length > 0 && (
                       <div className='mt-2 pt-2 border-t border-gray-200'>
                         <h5 className='text-sm font-medium text-gray-500'>
                           Modification History:
@@ -261,7 +358,7 @@ export default function ProductScanner() {
                             >
                               <span>
                                 {new Date(history.createdAt).toLocaleString()} -
-                                {history.user.username}{' '}
+                                {history.user?.username || 'Unknown user'}{' '}
                                 {history.action.toLowerCase()}d
                                 {history.field ? ` ${history.field}` : ''}
                               </span>

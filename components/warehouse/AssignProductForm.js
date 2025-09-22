@@ -7,6 +7,7 @@ import {
   getProductImages, // We'll add this to your actions
 } from '@/components/warehouse/actions';
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 export default function AssignProductForm() {
   const [state, formAction] = useActionState(assignProductToLocation, null);
@@ -149,7 +150,7 @@ export default function AssignProductForm() {
                 className='flex items-center p-2 cursor-pointer hover:bg-gray-100'
               >
                 {productImages[product.ean] ? (
-                  <img
+                  <Image
                     src={productImages[product.ean]}
                     alt={product.name}
                     className='w-10 h-10 object-contain mr-3'
