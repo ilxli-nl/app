@@ -153,6 +153,8 @@ export default function AssignProductForm() {
                   <Image
                     src={productImages[product.ean]}
                     alt={product.name}
+                    width={40}
+                    height={40}
                     className='w-10 h-10 object-contain mr-3'
                   />
                 ) : (
