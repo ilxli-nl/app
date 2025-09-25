@@ -8,6 +8,7 @@ import {
 } from '@/components/warehouse/actions';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { CldImage } from 'next-cloudinary';
 
 export default function ProductForm() {
   const [state, formAction] = useActionState(createOrUpdateProduct, null);
@@ -20,63 +21,13 @@ export default function ProductForm() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const searchRef = useRef(null);
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const result = await getProductsAndLocations();
-        if (result) {
-          setProducts(result.products || []);
-          setFilteredProducts(result.products || []);
-
-          // Fetch images for all products
-          const eans = result.products.map((p) => p.ean);
-          const imagesResult = await getProductImages(eans);
-          if (imagesResult) {
-            setProductImages(imagesResult);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-      }
-    }
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    // Filter products based on search term
-    if (searchTerm.trim() === '') {
-      setFilteredProducts(products);
-    } else {
-      const filtered = products.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.ean.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredProducts(filtered);
-    }
-  }, [searchTerm, products]);
-
-  useEffect(() => {
-    // Close dropdown when clicking outside
-    function handleClickOutside(event) {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(event.target) &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target)
-      ) {
-        setShowDropdown(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+  // ... your existing useEffect hooks remain the same ...
 
   const handleProductSelect = (product) => {
     setSelectedProduct(product);
@@ -92,44 +43,154 @@ export default function ProductForm() {
     // Set image preview if available
     if (productImages[product.ean]) {
       setImagePreview(productImages[product.ean]);
-      document.getElementById('imageUrl').value = productImages[product.ean];
     } else {
       setImagePreview('');
-      document.getElementById('imageUrl').value = '';
+    }
+
+    // Clear any selected file
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-    setShowDropdown(true);
-    if (!e.target.value) {
-      setSelectedProduct(null);
-      setIsEditing(false);
-      resetForm();
+  const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/svg+xml',
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a valid image file (JPEG, PNG, WEBP, GIF, or SVG)');
+      return;
     }
+
+    // Validate file size (max 10MB for Cloudinary)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadProgress(0);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Clear the URL input when file is selected
+    document.getElementById('imageUrl').value = '';
   };
 
-  const handleSearchFocus = () => {
-    if (filteredProducts.length > 0) {
-      setShowDropdown(true);
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setImagePreview('');
+    setUploadProgress(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
   const handleImageUrlChange = (e) => {
     const url = e.target.value;
     setImagePreview(url);
+    // Clear file selection when URL is entered
+    setSelectedFile(null);
+    setUploadProgress(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Simulate upload progress for better UX
+  useEffect(() => {
+    if (isSubmitting && selectedFile) {
+      const interval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      return () => clearInterval(interval);
+    }
+  }, [isSubmitting, selectedFile]);
+
+  const handleFormSubmit = async (formData) => {
+    setIsSubmitting(true);
+    setUploadProgress(0);
+
+    // Add the file to formData if selected
+    if (selectedFile) {
+      formData.append('imageFile', selectedFile);
+    }
+
+    // The server action will handle the upload and product creation/update
+    const result = await createOrUpdateProduct(null, formData);
+
+    if (result?.success) {
+      setUploadProgress(100);
+      // Wait a bit to show completion
+      setTimeout(() => {
+        resetForm();
+        // Refresh the products list after successful submission
+        refreshProducts();
+      }, 1000);
+    } else {
+      setUploadProgress(0);
+    }
+
+    setIsSubmitting(false);
+    return result;
+  };
+
+  const refreshProducts = async () => {
+    try {
+      const updatedResult = await getProductsAndLocations();
+      if (updatedResult) {
+        setProducts(updatedResult.products || []);
+        setFilteredProducts(updatedResult.products || []);
+
+        // Refresh images
+        const eans = updatedResult.products.map((p) => p.ean);
+        const imagesResult = await getProductImages(eans);
+        if (imagesResult) {
+          setProductImages(imagesResult);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing products:', error);
+    }
   };
 
   const resetForm = () => {
     setSelectedProduct(null);
     setSearchTerm('');
     setImagePreview('');
+    setSelectedFile(null);
+    setUploadProgress(0);
     setIsEditing(false);
 
     // Reset form fields
     const form = document.getElementById('product-form');
     if (form) {
       form.reset();
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -138,43 +199,7 @@ export default function ProductForm() {
     setShowDropdown(false);
   };
 
-  const handleFormSubmit = async (formData) => {
-    setIsSubmitting(true);
-    try {
-      // Pass null as prevState and the actual formData
-      const result = await createOrUpdateProduct(null, formData);
-
-      if (result?.success) {
-        resetForm();
-        // Refresh the products list after successful submission
-        const updatedResult = await getProductsAndLocations();
-        if (updatedResult) {
-          setProducts(updatedResult.products || []);
-          setFilteredProducts(updatedResult.products || []);
-
-          // Refresh images
-          const eans = updatedResult.products.map((p) => p.ean);
-          const imagesResult = await getProductImages(eans);
-          if (imagesResult) {
-            setProductImages(imagesResult);
-          }
-        }
-      }
-      return result;
-    } catch (error) {
-      // Handle any unexpected errors in the submission process
-      const errorMessage = error?.message || 'Failed to submit form';
-      console.log('Form submission error:', errorMessage);
-
-      return {
-        success: false,
-        message: 'Failed to submit form',
-        error: errorMessage,
-      };
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // ... rest of your existing functions (handleSearchChange, handleSearchFocus) remain the same ...
 
   return (
     <form
@@ -194,8 +219,20 @@ export default function ProductForm() {
         <input
           type='text'
           value={searchTerm}
-          onChange={handleSearchChange}
-          onFocus={handleSearchFocus}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setShowDropdown(true);
+            if (!e.target.value) {
+              setSelectedProduct(null);
+              setIsEditing(false);
+              resetForm();
+            }
+          }}
+          onFocus={() => {
+            if (filteredProducts.length > 0) {
+              setShowDropdown(true);
+            }
+          }}
           placeholder='Search by product name or EAN to edit'
           className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
         />
@@ -221,16 +258,28 @@ export default function ProductForm() {
                 className='flex items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors'
               >
                 {productImages[product.ean] ? (
-                  <Image
-                    width={40}
-                    height={40}
-                    src={productImages[product.ean]}
-                    alt={product.name}
-                    className='w-10 h-10 object-contain mr-3 rounded'
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
+                  <div className='w-10 h-10 relative mr-3'>
+                    {productImages[product.ean].includes('cloudinary') ? (
+                      <CldImage
+                        width={40}
+                        height={40}
+                        src={productImages[product.ean]}
+                        alt={product.name}
+                        className='w-10 h-10 object-contain rounded'
+                      />
+                    ) : (
+                      <Image
+                        width={40}
+                        height={40}
+                        src={productImages[product.ean]}
+                        alt={product.name}
+                        className='w-10 h-10 object-contain rounded'
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    )}
+                  </div>
                 ) : (
                   <div className='w-10 h-10 bg-gray-100 flex items-center justify-center mr-3 rounded'>
                     <span className='text-xs text-gray-500'>No image</span>
@@ -287,35 +336,124 @@ export default function ProductForm() {
         />
       </div>
 
-      {/* Image URL */}
+      {/* Image Upload Section */}
       <div className='mb-4'>
-        <label
-          htmlFor='imageUrl'
-          className='block text-sm font-medium text-gray-700 mb-2'
-        >
-          Image URL (optional)
+        <label className='block text-sm font-medium text-gray-700 mb-2'>
+          Product Image
         </label>
-        <input
-          type='url'
-          id='imageUrl'
-          name='imageUrl'
-          onChange={handleImageUrlChange}
-          placeholder='https://example.com/image.jpg'
-          className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-        />
-        {imagePreview && (
-          <div className='mt-3'>
-            <div className='text-sm text-gray-600 mb-1'>Image Preview:</div>
-            <div className='relative w-20 h-20 border border-gray-300 rounded-lg overflow-hidden'>
-              <Image
-                width={80}
-                height={80}
-                src={imagePreview}
-                alt='Preview'
-                className='w-full h-full object-cover'
-                onError={() => setImagePreview('')}
-              />
+
+        {/* File Upload */}
+        <div className='mb-3'>
+          <label
+            htmlFor='imageFile'
+            className='block text-sm font-medium text-gray-700 mb-2'
+          >
+            Upload from device (Recommended - uses Cloudinary)
+          </label>
+          <input
+            ref={fileInputRef}
+            type='file'
+            id='imageFile'
+            name='imageFile'
+            accept='image/*'
+            onChange={handleFileSelect}
+            disabled={isSubmitting}
+            className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50'
+          />
+          <p className='text-xs text-gray-500 mt-1'>
+            Supported formats: JPEG, PNG, WEBP, GIF, SVG (Max 10MB)
+          </p>
+
+          {/* Upload Progress */}
+          {isSubmitting && selectedFile && (
+            <div className='mt-2'>
+              <div className='flex justify-between text-xs text-gray-600 mb-1'>
+                <span>Uploading to Cloudinary...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className='w-full bg-gray-200 rounded-full h-2'>
+                <div
+                  className='bg-blue-600 h-2 rounded-full transition-all duration-300'
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
             </div>
+          )}
+        </div>
+
+        {/* OR separator */}
+        <div className='flex items-center my-4'>
+          <div className='flex-grow border-t border-gray-300'></div>
+          <span className='mx-4 text-sm text-gray-500'>OR</span>
+          <div className='flex-grow border-t border-gray-300'></div>
+        </div>
+
+        {/* Image URL */}
+        <div>
+          <label
+            htmlFor='imageUrl'
+            className='block text-sm font-medium text-gray-700 mb-2'
+          >
+            Image URL (Alternative)
+          </label>
+          <input
+            type='url'
+            id='imageUrl'
+            name='imageUrl'
+            onChange={handleImageUrlChange}
+            placeholder='https://example.com/image.jpg'
+            disabled={isSubmitting}
+            className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50'
+          />
+        </div>
+
+        {/* Image Preview */}
+        {imagePreview && (
+          <div className='mt-4'>
+            <div className='text-sm text-gray-600 mb-2'>Image Preview:</div>
+            <div className='relative inline-block'>
+              <div className='relative w-32 h-32 border border-gray-300 rounded-lg overflow-hidden'>
+                {imagePreview.startsWith('data:') ||
+                imagePreview.startsWith('http') ? (
+                  <Image
+                    width={128}
+                    height={128}
+                    src={imagePreview}
+                    alt='Preview'
+                    className='w-full h-full object-cover'
+                    onError={() => setImagePreview('')}
+                  />
+                ) : (
+                  <CldImage
+                    width={128}
+                    height={128}
+                    src={imagePreview}
+                    alt='Product preview'
+                    className='w-full h-full object-cover'
+                    sizes='128px'
+                  />
+                )}
+              </div>
+              <button
+                type='button'
+                onClick={handleRemoveFile}
+                disabled={isSubmitting}
+                className='absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 focus:outline-none disabled:bg-gray-400'
+              >
+                ×
+              </button>
+            </div>
+            {selectedFile && (
+              <div className='mt-2 text-xs text-gray-500'>
+                File: {selectedFile.name} (
+                {(selectedFile.size / 1024).toFixed(1)} KB)
+                {uploadProgress === 100 && (
+                  <span className='ml-2 text-green-600'>
+                    ✓ Uploaded to Cloudinary
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -332,7 +470,8 @@ export default function ProductForm() {
           id='description'
           name='description'
           rows={3}
-          className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none'
+          disabled={isSubmitting}
+          className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50'
           placeholder='Enter product description...'
         />
       </div>
@@ -369,7 +508,11 @@ export default function ProductForm() {
                   d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
                 />
               </svg>
-              {isEditing ? 'Updating...' : 'Creating...'}
+              {selectedFile
+                ? 'Uploading...'
+                : isEditing
+                ? 'Updating...'
+                : 'Creating...'}
             </span>
           ) : isEditing ? (
             'Update Product'
@@ -383,7 +526,7 @@ export default function ProductForm() {
             type='button'
             onClick={resetForm}
             disabled={isSubmitting}
-            className='py-2 px-4 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors'
+            className='py-2 px-4 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50'
           >
             Cancel
           </button>

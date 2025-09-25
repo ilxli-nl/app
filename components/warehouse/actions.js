@@ -1,12 +1,160 @@
 'use server';
-import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/prisma';
+import { cloudinary } from '@/lib/cloudinary';
+
+export async function uploadProductImage(formData) {
+  try {
+    const file = formData.get('file');
+    const ean = formData.get('ean');
+
+    if (!file || !ean) {
+      return { success: false, error: 'File and EAN are required' };
+    }
+
+    // Convert file to buffer for Cloudinary
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Upload to Cloudinary using upload_stream
+    const uploadResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'warehouse/products',
+          public_id: `product_${ean}_${Date.now()}`,
+          tags: ['product', ean],
+          upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET,
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(buffer);
+    });
+
+    // Save to database using ProductImage model
+    const productImage = await prisma.productImage.upsert({
+      where: { ean },
+      update: {
+        imageUrl: uploadResult.secure_url,
+        publicId: uploadResult.public_id,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        format: uploadResult.format,
+        width: uploadResult.width,
+        height: uploadResult.height,
+        updatedAt: new Date(),
+      },
+      create: {
+        ean,
+        imageUrl: uploadResult.secure_url,
+        publicId: uploadResult.public_id,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        format: uploadResult.format,
+        width: uploadResult.width,
+        height: uploadResult.height,
+      },
+    });
+
+    // Update product's imageUrl for backward compatibility
+    await prisma.product.upsert({
+      where: { ean },
+      update: {
+        imageUrl: uploadResult.secure_url,
+        updatedAt: new Date(),
+      },
+      create: {
+        ean,
+        name: `Product ${ean}`,
+        imageUrl: uploadResult.secure_url,
+      },
+    });
+
+    return {
+      success: true,
+      imageUrl: productImage.imageUrl,
+      publicId: productImage.publicId,
+    };
+  } catch (error) {
+    console.error('Error uploading product image:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteProductImage(ean, publicId) {
+  try {
+    // Delete from Cloudinary
+    if (publicId) {
+      await cloudinary.uploader.destroy(publicId);
+    }
+
+    // Delete from database
+    await prisma.productImage.delete({
+      where: { ean },
+    });
+
+    // Clear product imageUrl
+    await prisma.product.update({
+      where: { ean },
+      data: {
+        imageUrl: null,
+        updatedAt: new Date(),
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting product image:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getProductImages(eans) {
+  try {
+    // First try to get from ProductImage table (new system)
+    const productImages = await prisma.productImage.findMany({
+      where: {
+        ean: {
+          in: eans,
+        },
+      },
+    });
+
+    const imageMap = {};
+    productImages.forEach((image) => {
+      imageMap[image.ean] = image.imageUrl;
+    });
+
+    // For any missing images, try the legacy Images table
+    const missingEans = eans.filter((ean) => !imageMap[ean]);
+    if (missingEans.length > 0) {
+      const legacyImages = await prisma.images.findMany({
+        where: {
+          ean: {
+            in: missingEans,
+          },
+        },
+      });
+
+      legacyImages.forEach((image) => {
+        imageMap[image.ean] = image.image;
+      });
+    }
+
+    return imageMap;
+  } catch (error) {
+    console.error('Error fetching product images:', error);
+    return {};
+  }
+}
 
 export async function getLocations() {
   try {
-    const prisma = new PrismaClient();
     const locations = await prisma.warehouseLocation.findMany({
       select: {
         id: true,
@@ -17,7 +165,6 @@ export async function getLocations() {
         code: 'asc',
       },
     });
-    await prisma.$disconnect();
     return locations;
   } catch (error) {
     console.error('Error fetching locations:', error);
@@ -25,49 +172,29 @@ export async function getLocations() {
   }
 }
 
-export async function getProductImages(eans) {
+export async function getProductsAndLocations() {
   try {
-    const images = await prisma.images.findMany({
-      where: {
-        ean: {
-          in: eans,
+    const products = await prisma.product.findMany({
+      include: {
+        locations: {
+          include: {
+            location: true,
+          },
         },
       },
     });
 
-    // Convert to a dictionary for easy lookup
-    const imageDict = {};
-    images.forEach((img) => {
-      imageDict[img.ean] = img.image;
-    });
+    const locations = await prisma.warehouseLocation.findMany();
 
-    return imageDict;
-  } catch (error) {
-    console.error('Error fetching product images:', error);
-    return {};
-  }
-}
-
-export async function getProductsAndLocations() {
-  try {
-    const [products, locations] = await Promise.all([
-      prisma.product.findMany({
-        select: { id: true, ean: true, name: true },
-      }),
-      prisma.warehouseLocation.findMany({
-        select: { id: true, code: true, description: true },
-      }),
-    ]);
     return { products, locations };
   } catch (error) {
-    console.error('Error fetching data:', error);
-    return null;
+    console.error('Error fetching products and locations:', error);
+    return { products: [], locations: [] };
   }
 }
 
 // Assign product to location
 export async function assignProductToLocation(prevState, formData) {
-  const prisma = new PrismaClient();
   try {
     // Validate form data
     if (!formData || typeof formData.get !== 'function') {
@@ -164,18 +291,12 @@ export async function assignProductToLocation(prevState, formData) {
       error: error.message,
       message: `Assignment failed: ${error.message}`,
     };
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
 // Location Actions
 export async function createLocation(prevState, formData) {
-  let prisma;
   try {
-    // Initialize Prisma client
-    prisma = new PrismaClient();
-
     // Debug: Log formData contents
     const formDataObj = Object.fromEntries(formData);
     console.log('Form data received:', formDataObj);
@@ -224,96 +345,82 @@ export async function createLocation(prevState, formData) {
       error: error.message,
       message: `Failed to create location: ${error.message}`,
     };
-  } finally {
-    // Close connection if it was opened
-    if (prisma) {
-      await prisma.$disconnect().catch((e) => {
-        console.error('Error disconnecting Prisma:', e);
-      });
-    }
   }
 }
 
-// In app/warehouse/actions.js
-export async function createProduct(prevState, formData) {
+export async function createOrUpdateProduct(prevState, formData) {
   try {
-    // Validate form data exists
-    if (!formData) {
-      throw new Error('Form data is required');
-    }
-
-    // Get and validate required fields
     const ean = formData.get('ean');
     const name = formData.get('name');
+    const description = formData.get('description');
+    const imageUrl = formData.get('imageUrl');
+    const file = formData.get('imageFile');
 
     if (!ean || !name) {
-      throw new Error('EAN and Name are required fields');
+      return {
+        success: false,
+        message: 'EAN and Product Name are required',
+      };
     }
 
-    // Get optional fields
-    const description = formData.get('description') || null;
-    const imageUrl = formData.get('imageUrl') || null;
+    let finalImageUrl = imageUrl;
 
-    // Create the product
-    const product = await prisma.product.create({
-      data: {
+    // Handle file upload if a file was provided
+    if (file && file.size > 0) {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('ean', ean);
+
+      const uploadResult = await uploadProductImage(uploadFormData);
+      if (uploadResult.success) {
+        finalImageUrl = uploadResult.imageUrl;
+      } else {
+        return {
+          success: false,
+          message: 'Failed to upload image',
+          error: uploadResult.error,
+        };
+      }
+    }
+
+    // Create or update product
+    const product = await prisma.product.upsert({
+      where: { ean },
+      update: {
+        name,
+        description,
+        ...(finalImageUrl && { imageUrl: finalImageUrl }),
+        updatedAt: new Date(),
+      },
+      create: {
         ean,
         name,
         description,
+        ...(finalImageUrl && { imageUrl: finalImageUrl }),
       },
     });
 
-    // Create image record if URL provided
-    if (imageUrl) {
+    // Also update the legacy Images table for backward compatibility
+    if (finalImageUrl) {
       await prisma.images.upsert({
         where: { ean },
-        update: { image: imageUrl },
-        create: { ean, image: imageUrl },
+        update: { image: finalImageUrl },
+        create: { ean, image: finalImageUrl },
       });
     }
 
     revalidatePath('/warehouse');
     return {
       success: true,
-      message: 'Product created successfully',
+      message: `Product ${product.ean ? 'updated' : 'created'} successfully!`,
       product,
     };
   } catch (error) {
-    console.error('Product creation error:', {
-      message: error.message,
-      stack: error.stack,
-      formData: formData ? Object.fromEntries(formData) : null,
-    });
+    console.error('Error creating/updating product:', error);
     return {
       success: false,
+      message: 'Failed to save product',
       error: error.message,
-      message: `Failed to create product: ${error.message}`,
-    };
-  }
-}
-
-export async function updateProduct(prevState, formData) {
-  try {
-    const ean = formData.get('ean');
-    const name = formData.get('name');
-    const imageUrl = formData.get('imageUrl');
-    const description = formData.get('description');
-
-    const updatedProduct = await prisma.product.update({
-      where: { ean },
-      data: { name, imageUrl, description },
-    });
-
-    return {
-      success: true,
-      message: 'Product updated successfully',
-      product: updatedProduct,
-    };
-  } catch (error) {
-    console.error('Product update error:', error);
-    return {
-      success: false,
-      message: error.message,
     };
   }
 }
@@ -351,8 +458,12 @@ export async function forceDeleteProduct(prevState, formData) {
         },
       });
 
-      // Delete related image
+      // Delete related images from both tables
       await tx.images.deleteMany({
+        where: { ean },
+      });
+
+      await tx.productImage.deleteMany({
         where: { ean },
       });
 
@@ -362,6 +473,7 @@ export async function forceDeleteProduct(prevState, formData) {
       });
     });
 
+    revalidatePath('/warehouse');
     return {
       success: true,
       message: 'Product and all related data deleted successfully',
@@ -372,105 +484,6 @@ export async function forceDeleteProduct(prevState, formData) {
       success: false,
       message: 'Failed to delete product',
       error: error.message,
-    };
-  }
-}
-
-export async function createOrUpdateProduct(prevState, formData) {
-  try {
-    // Check if formData is valid
-    if (!formData || typeof formData.get !== 'function') {
-      return {
-        success: false,
-        message: 'Invalid form data received',
-      };
-    }
-
-    const ean = formData.get('ean');
-    const name = formData.get('name');
-    const imageUrl = formData.get('imageUrl');
-    const description = formData.get('description');
-
-    // Validate required fields
-    if (!ean || !name) {
-      return {
-        success: false,
-        message: 'EAN and Product Name are required',
-      };
-    }
-
-    // Check if product exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { ean },
-    });
-
-    let result;
-    if (existingProduct) {
-      // Update existing product
-      result = await prisma.product.update({
-        where: { ean },
-        data: {
-          name,
-          imageUrl: imageUrl || null,
-          description: description || null,
-        },
-      });
-    } else {
-      // Create new product
-      result = await prisma.product.create({
-        data: {
-          ean,
-          name,
-          imageUrl: imageUrl || null,
-          description: description || null,
-        },
-      });
-    }
-
-    return {
-      success: true,
-      message: existingProduct
-        ? 'Product updated successfully'
-        : 'Product created successfully',
-      product: result,
-    };
-  } catch (caughtError) {
-    // Use a different variable name to avoid shadowing issues
-    const error = caughtError;
-
-    // Extract error information safely
-    const errorInfo = {
-      message: 'Unknown error occurred',
-      code: 'UNKNOWN',
-    };
-
-    if (error && typeof error === 'object') {
-      errorInfo.message = error.message || errorInfo.message;
-      errorInfo.code = error.code || errorInfo.code;
-    }
-
-    // Safe logging
-    try {
-      console.log(
-        'Product operation error:',
-        errorInfo.message,
-        errorInfo.code
-      );
-    } catch (loggingError) {
-      // Silently fail if console.log fails
-    }
-
-    let userMessage = 'An unexpected error occurred';
-    if (errorInfo.code === 'P2002') {
-      userMessage = 'A product with this EAN already exists';
-    } else if (errorInfo.code === 'P2025') {
-      userMessage = 'Product not found for update';
-    }
-
-    return {
-      success: false,
-      message: userMessage,
-      error: errorInfo.message,
     };
   }
 }
@@ -522,19 +535,7 @@ export async function deleteProductFromLocation(productLocationId) {
       where: { id: productLocationId },
     });
 
-    // Create a history record (optional)
-    // You might want to add this if you're tracking changes
-    // await prisma.productLocationHistory.create({
-    //   data: {
-    //     recordId: productLocationId,
-    //     userId: 'system', // You might want to pass the actual user ID
-    //     action: 'DELETE',
-    //     field: 'product_location',
-    //     oldValue: JSON.stringify(productLocation),
-    //     newValue: null,
-    //   },
-    // });
-
+    revalidatePath('/warehouse');
     return {
       success: true,
       message: 'Product removed from location successfully',
@@ -565,22 +566,8 @@ export async function scanLocation(prevState, formData) {
     // Get EANs of all products at this location
     const eans = location.products.map((item) => item.product.ean);
 
-    // Fetch images for these products
-    const productImages = {};
-    if (eans.length > 0) {
-      const images = await prisma.images.findMany({
-        where: {
-          ean: {
-            in: eans,
-          },
-        },
-      });
-
-      // Create a mapping of EAN to image
-      images.forEach((image) => {
-        productImages[image.ean] = image.image;
-      });
-    }
+    // Fetch images for these products using the unified function
+    const productImages = await getProductImages(eans);
 
     return {
       location: {
@@ -589,15 +576,15 @@ export async function scanLocation(prevState, formData) {
         description: location.description,
       },
       products: location.products,
-      productImages, // Include the images in the response
+      productImages,
     };
   } catch (error) {
+    console.error('Scan location error:', error);
     return { error: error.message };
   }
 }
 
 export async function scanProduct(prevState, formData) {
-  const prisma = new PrismaClient();
   try {
     const productEan = formData.get('productEan');
 
@@ -611,6 +598,14 @@ export async function scanProduct(prevState, formData) {
             history: {
               orderBy: { createdAt: 'desc' },
               take: 5,
+              include: {
+                user: {
+                  select: {
+                    username: true,
+                    displayName: true,
+                  },
+                },
+              },
             },
           },
         },
@@ -621,10 +616,9 @@ export async function scanProduct(prevState, formData) {
       return { error: 'Product not found' };
     }
 
-    // Then get the image separately
-    const image = await prisma.images.findUnique({
-      where: { ean: productEan },
-    });
+    // Get the image using the unified function
+    const imageMap = await getProductImages([productEan]);
+    const imageUrl = imageMap[productEan] || null;
 
     return {
       product: {
@@ -632,22 +626,13 @@ export async function scanProduct(prevState, formData) {
         ean: product.ean,
         name: product.name,
         description: product.description,
-        imageUrl: image?.image || null,
+        imageUrl: imageUrl,
       },
-      locations: product.locations.map((loc) => ({
-        ...loc,
-        history: loc.history.map((hist) => ({
-          ...hist,
-          // Add username if you need it (requires proper relation)
-          username: 'System', // Placeholder until you set up proper user relations
-        })),
-      })),
+      locations: product.locations,
     };
   } catch (error) {
     console.error('Product scan error:', error);
     return { error: error.message };
-  } finally {
-    await prisma.$disconnect();
   }
 }
 
@@ -660,38 +645,56 @@ export async function updateProductQuantity(prevState, formData) {
     const assignmentId = formData.get('assignmentId');
     const newQuantity = parseInt(formData.get('newQuantity'));
 
-    if (isNaN(newQuantity)) throw new Error('Invalid quantity');
+    if (isNaN(newQuantity) || newQuantity < 0)
+      throw new Error('Invalid quantity');
 
-    const result = await prisma.$transaction([
-      prisma.productLocation.update({
+    // Get current quantity for history
+    const currentAssignment = await prisma.productLocation.findUnique({
+      where: { id: assignmentId },
+    });
+
+    if (!currentAssignment) {
+      throw new Error('Product assignment not found');
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Update the quantity
+      const updatedAssignment = await tx.productLocation.update({
         where: { id: assignmentId },
         data: { quantity: newQuantity },
         include: { product: true, location: true },
-      }),
-      prisma.productLocationHistory.create({
+      });
+
+      // Create history record
+      await tx.productLocationHistory.create({
         data: {
           recordId: assignmentId,
           action: 'UPDATE',
           field: 'quantity',
-          oldValue: prevState?.currentQuantity?.toString() || '0',
+          oldValue: currentAssignment.quantity.toString(),
           newValue: newQuantity.toString(),
           userId: user.name,
         },
-      }),
-    ]);
+      });
 
-    // Add revalidation for both product and location pages
+      return updatedAssignment;
+    });
+
     revalidatePath('/warehouse');
     revalidatePath('/warehouse/location-scanner');
 
     return {
       success: true,
+      message: 'Quantity updated successfully',
       updatedAssignment: result,
       newQuantity: newQuantity,
-      currentQuantity: newQuantity,
     };
   } catch (error) {
-    return { error: error.message };
+    console.error('Update quantity error:', error);
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
@@ -711,6 +714,7 @@ export async function moveProductLocation(prevState, formData) {
       where: { id: assignmentId },
       include: {
         location: true,
+        product: true,
       },
     });
 
@@ -725,46 +729,48 @@ export async function moveProductLocation(prevState, formData) {
 
     if (!newLocation) throw new Error('New location not found');
 
-    // Check if product already exists at the new location
-    const existingAssignment = await prisma.productLocation.findFirst({
-      where: {
-        productId: currentAssignment.productId,
-        locationId: newLocationId,
-      },
-    });
-
     let result;
 
-    if (existingAssignment) {
-      // If product already exists at new location, update quantity and delete old
-      result = await prisma.productLocation.update({
-        where: { id: existingAssignment.id },
-        data: {
-          quantity: existingAssignment.quantity + currentAssignment.quantity,
+    await prisma.$transaction(async (tx) => {
+      // Check if product already exists at the new location
+      const existingAssignment = await tx.productLocation.findFirst({
+        where: {
+          productId: currentAssignment.productId,
+          locationId: newLocationId,
         },
       });
 
-      await prisma.productLocation.delete({
-        where: { id: assignmentId },
-      });
-    } else {
-      // If product doesn't exist at new location, move it
-      result = await prisma.productLocation.update({
-        where: { id: assignmentId },
-        data: { locationId: newLocationId },
-      });
-    }
+      if (existingAssignment) {
+        // If product already exists at new location, update quantity and delete old
+        result = await tx.productLocation.update({
+          where: { id: existingAssignment.id },
+          data: {
+            quantity: existingAssignment.quantity + currentAssignment.quantity,
+          },
+        });
 
-    // Create history record
-    await prisma.productLocationHistory.create({
-      data: {
-        recordId: assignmentId,
-        action: 'MOVE',
-        field: 'location',
-        oldValue: currentAssignment.location.code,
-        newValue: newLocation.code,
-        userId: user.name,
-      },
+        await tx.productLocation.delete({
+          where: { id: assignmentId },
+        });
+      } else {
+        // If product doesn't exist at new location, move it
+        result = await tx.productLocation.update({
+          where: { id: assignmentId },
+          data: { locationId: newLocationId },
+        });
+      }
+
+      // Create history record
+      await tx.productLocationHistory.create({
+        data: {
+          recordId: assignmentId,
+          action: 'MOVE',
+          field: 'location',
+          oldValue: currentAssignment.location.code,
+          newValue: newLocation.code,
+          userId: user.name,
+        },
+      });
     });
 
     revalidatePath('/warehouse');
@@ -775,21 +781,12 @@ export async function moveProductLocation(prevState, formData) {
   } catch (error) {
     console.error('Move location error:', error);
     return {
+      success: false,
       error: error.message || 'Failed to move product location',
     };
   }
 }
 
-// Example function to get total product quantity
-export async function getProductTotalQuantity(productId) {
-  const locations = await prisma.locationProduct.findMany({
-    where: { productId },
-    select: { quantity: true },
-  });
-
-  return locations.reduce((total, loc) => total + loc.quantity, 0);
-}
-// Data Fetching Actions
 export async function getProducts() {
   try {
     const products = await prisma.product.findMany({
@@ -824,6 +821,7 @@ export async function getProducts() {
     return [];
   }
 }
+
 export async function deleteProduct(prevState, formData) {
   try {
     const ean = formData.get('ean');
@@ -863,8 +861,12 @@ export async function deleteProduct(prevState, formData) {
       };
     }
 
-    // Delete related image if exists
+    // Delete related images from both tables
     await prisma.images.deleteMany({
+      where: { ean },
+    });
+
+    await prisma.productImage.deleteMany({
       where: { ean },
     });
 
@@ -873,10 +875,10 @@ export async function deleteProduct(prevState, formData) {
       where: { ean },
     });
 
+    revalidatePath('/warehouse');
     return {
       success: true,
       message: 'Product deleted successfully',
-      deletedProduct: existingProduct,
     };
   } catch (error) {
     console.error('Delete product error:', error);
@@ -893,5 +895,20 @@ export async function deleteProduct(prevState, formData) {
       message: errorMessage,
       error: error.message,
     };
+  }
+}
+
+// Utility function to get total product quantity
+export async function getProductTotalQuantity(productId) {
+  try {
+    const locations = await prisma.productLocation.findMany({
+      where: { productId },
+      select: { quantity: true },
+    });
+
+    return locations.reduce((total, loc) => total + loc.quantity, 0);
+  } catch (error) {
+    console.error('Error getting total quantity:', error);
+    return 0;
   }
 }
