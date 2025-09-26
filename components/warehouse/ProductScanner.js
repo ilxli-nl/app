@@ -37,17 +37,19 @@ export default function ProductScanner() {
         const locations = await getLocations();
         setAllLocations(locations);
 
-        // Fetch products using server action
+        // Fetch products using server action (now includes images)
         const products = await getProducts();
         setAllProducts(products);
         setFilteredProducts(products);
 
-        // Fetch images for all products
-        const eans = products.map((p) => p.ean);
-        const imagesResult = await getProductImages(eans);
-        if (imagesResult) {
-          setProductImages(imagesResult);
-        }
+        // Create image map from products
+        const imageMap = {};
+        products.forEach((product) => {
+          if (product.imageUrl) {
+            imageMap[product.ean] = product.imageUrl;
+          }
+        });
+        setProductImages(imageMap);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -63,6 +65,16 @@ export default function ProductScanner() {
         const products = await getProducts();
         setAllProducts(products);
         setFilteredProducts(products);
+
+        // Update image map
+        const imageMap = {};
+        products.forEach((product) => {
+          if (product.imageUrl) {
+            imageMap[product.ean] = product.imageUrl;
+          }
+        });
+        setProductImages(imageMap);
+
         setSelectedProduct(null);
         setSearchTerm('');
         setShowDeleteConfirm(false);
@@ -205,13 +217,17 @@ export default function ProductScanner() {
                     onClick={() => handleProductSelect(product)}
                     className='flex items-center p-2 cursor-pointer hover:bg-gray-100'
                   >
-                    {productImages[product.ean] ? (
+                    {product.imageUrl ? (
                       <Image
-                        src={productImages[product.ean]}
+                        src={product.imageUrl}
                         alt={product.name}
                         width={40}
                         height={40}
                         className='w-10 h-10 object-contain mr-3'
+                        onError={(e) => {
+                          // Hide image if it fails to load
+                          e.target.style.display = 'none';
+                        }}
                       />
                     ) : (
                       <div className='w-10 h-10 bg-gray-200 flex items-center justify-center mr-3'>
@@ -253,6 +269,10 @@ export default function ProductScanner() {
                   src={state.product.imageUrl}
                   alt={state.product.name}
                   className='h-20 w-20 object-cover rounded'
+                  onError={(e) => {
+                    // Hide image if it fails to load
+                    e.target.style.display = 'none';
+                  }}
                 />
               )}
               <div className='flex-1'>
@@ -393,6 +413,7 @@ export default function ProductScanner() {
   );
 }
 
+// Keep the ProductLocationActions, EditQuantityForm, and MoveLocationForm components the same as before
 function ProductLocationActions({
   assignmentId,
   currentQuantity: initialQuantity,

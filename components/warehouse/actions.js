@@ -2,10 +2,28 @@
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/prisma';
-import { cloudinary } from '@/lib/cloudinary';
+
+let cloudinary;
+
+async function initializeCloudinary() {
+  if (!cloudinary) {
+    // Use dynamic import to avoid client-side issues
+    const cloudinaryModule = await import('cloudinary');
+    cloudinary = cloudinaryModule.v2;
+
+    cloudinary.config({
+      cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+  }
+  return cloudinary;
+}
 
 export async function uploadProductImage(formData) {
   try {
+    const cloudinary = await initializeCloudinary();
+
     const file = formData.get('file');
     const ean = formData.get('ean');
 
@@ -13,18 +31,18 @@ export async function uploadProductImage(formData) {
       return { success: false, error: 'File and EAN are required' };
     }
 
-    // Convert file to buffer for Cloudinary
+    // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Upload to Cloudinary using upload_stream
+    // Upload to Cloudinary
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'warehouse/products',
           public_id: `product_${ean}_${Date.now()}`,
-          tags: ['product', ean],
-          upload_preset: process.env.CLOUDINARY_UPLOAD_PRESET,
+          upload_preset:
+            process.env.CLOUDINARY_UPLOAD_PRESET || 'product_images',
         },
         (error, result) => {
           if (error) reject(error);
@@ -34,34 +52,20 @@ export async function uploadProductImage(formData) {
       uploadStream.end(buffer);
     });
 
-    // Save to database using ProductImage model
-    const productImage = await prisma.productImage.upsert({
+    // Save to database using the Images model (from your schema)
+    const productImage = await prisma.images.upsert({
       where: { ean },
       update: {
-        imageUrl: uploadResult.secure_url,
-        publicId: uploadResult.public_id,
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        format: uploadResult.format,
-        width: uploadResult.width,
-        height: uploadResult.height,
-        updatedAt: new Date(),
+        image: uploadResult.secure_url, // Use 'image' field from your schema
+        // Remove fields that don't exist in your Images model
       },
       create: {
         ean,
-        imageUrl: uploadResult.secure_url,
-        publicId: uploadResult.public_id,
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        format: uploadResult.format,
-        width: uploadResult.width,
-        height: uploadResult.height,
+        image: uploadResult.secure_url, // Use 'image' field from your schema
       },
     });
 
-    // Update product's imageUrl for backward compatibility
+    // Update product's imageUrl
     await prisma.product.upsert({
       where: { ean },
       update: {
@@ -77,8 +81,7 @@ export async function uploadProductImage(formData) {
 
     return {
       success: true,
-      imageUrl: productImage.imageUrl,
-      publicId: productImage.publicId,
+      imageUrl: productImage.image, // Use 'image' field from your schema
     };
   } catch (error) {
     console.error('Error uploading product image:', error);
@@ -86,38 +89,86 @@ export async function uploadProductImage(formData) {
   }
 }
 
-export async function deleteProductImage(ean, publicId) {
+export async function deleteProduct(prevState, formData) {
   try {
-    // Delete from Cloudinary
-    if (publicId) {
-      await cloudinary.uploader.destroy(publicId);
+    const ean = formData.get('ean');
+
+    if (!ean) {
+      return {
+        success: false,
+        message: 'EAN is required to delete a product',
+      };
     }
 
-    // Delete from database
-    await prisma.productImage.delete({
+    // First, check if the product exists
+    const existingProduct = await prisma.product.findUnique({
       where: { ean },
-    });
-
-    // Clear product imageUrl
-    await prisma.product.update({
-      where: { ean },
-      data: {
-        imageUrl: null,
-        updatedAt: new Date(),
+      include: {
+        locations: {
+          include: {
+            history: true,
+          },
+        },
       },
     });
 
-    return { success: true };
+    if (!existingProduct) {
+      return {
+        success: false,
+        message: 'Product not found',
+      };
+    }
+
+    // Check if product has locations assigned
+    if (existingProduct.locations.length > 0) {
+      return {
+        success: false,
+        message:
+          'Cannot delete product - it is assigned to locations. Please remove from all locations first.',
+      };
+    }
+
+    // Delete related images from Images table
+    await prisma.images.deleteMany({
+      where: { ean },
+    });
+
+    // Delete the product
+    await prisma.product.delete({
+      where: { ean },
+    });
+
+    revalidatePath('/warehouse');
+    return {
+      success: true,
+      message: 'Product deleted successfully',
+    };
   } catch (error) {
-    console.error('Error deleting product image:', error);
-    return { success: false, error: error.message };
+    console.error('Delete product error:', error);
+
+    let errorMessage = 'Failed to delete product';
+    if (error.code === 'P2025') {
+      errorMessage = 'Product not found';
+    } else if (error.code === 'P2003') {
+      errorMessage = 'Cannot delete product due to existing references';
+    }
+
+    return {
+      success: false,
+      message: errorMessage,
+      error: error.message,
+    };
   }
 }
 
 export async function getProductImages(eans) {
   try {
-    // First try to get from ProductImage table (new system)
-    const productImages = await prisma.productImage.findMany({
+    if (!eans || eans.length === 0) {
+      return {};
+    }
+
+    // Fetch from Images table (legacy system)
+    const images = await prisma.images.findMany({
       where: {
         ean: {
           in: eans,
@@ -125,26 +176,11 @@ export async function getProductImages(eans) {
       },
     });
 
+    // Create image map
     const imageMap = {};
-    productImages.forEach((image) => {
-      imageMap[image.ean] = image.imageUrl;
+    images.forEach((image) => {
+      imageMap[image.ean] = image.image;
     });
-
-    // For any missing images, try the legacy Images table
-    const missingEans = eans.filter((ean) => !imageMap[ean]);
-    if (missingEans.length > 0) {
-      const legacyImages = await prisma.images.findMany({
-        where: {
-          ean: {
-            in: missingEans,
-          },
-        },
-      });
-
-      legacyImages.forEach((image) => {
-        imageMap[image.ean] = image.image;
-      });
-    }
 
     return imageMap;
   } catch (error) {
@@ -169,6 +205,39 @@ export async function getLocations() {
   } catch (error) {
     console.error('Error fetching locations:', error);
     return [];
+  }
+}
+
+export async function deleteProductImage(ean, publicId) {
+  try {
+    const cloudinary = await initializeCloudinary();
+    if (!cloudinary) {
+      return { success: false, error: 'Cloudinary not configured' };
+    }
+
+    // Delete from Cloudinary
+    if (publicId) {
+      await cloudinary.uploader.destroy(publicId);
+    }
+
+    // Delete from database using Images model
+    await prisma.images.delete({
+      where: { ean },
+    });
+
+    // Clear product imageUrl
+    await prisma.product.update({
+      where: { ean },
+      data: {
+        imageUrl: null,
+        updatedAt: new Date(),
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting product image:', error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -293,7 +362,6 @@ export async function assignProductToLocation(prevState, formData) {
     };
   }
 }
-
 // Location Actions
 export async function createLocation(prevState, formData) {
   try {
@@ -377,8 +445,7 @@ export async function createOrUpdateProduct(prevState, formData) {
       } else {
         return {
           success: false,
-          message: 'Failed to upload image',
-          error: uploadResult.error,
+          message: `Failed to upload image: ${uploadResult.error}`,
         };
       }
     }
@@ -400,7 +467,7 @@ export async function createOrUpdateProduct(prevState, formData) {
       },
     });
 
-    // Also update the legacy Images table for backward compatibility
+    // Also update the Images table
     if (finalImageUrl) {
       await prisma.images.upsert({
         where: { ean },
@@ -458,12 +525,8 @@ export async function forceDeleteProduct(prevState, formData) {
         },
       });
 
-      // Delete related images from both tables
+      // Delete related images from Images table
       await tx.images.deleteMany({
-        where: { ean },
-      });
-
-      await tx.productImage.deleteMany({
         where: { ean },
       });
 
@@ -616,9 +679,12 @@ export async function scanProduct(prevState, formData) {
       return { error: 'Product not found' };
     }
 
-    // Get the image using the unified function
-    const imageMap = await getProductImages([productEan]);
-    const imageUrl = imageMap[productEan] || null;
+    // Get image from Images table (the one that definitely exists)
+    const image = await prisma.images.findUnique({
+      where: { ean: productEan },
+    });
+
+    const imageUrl = image?.image || null;
 
     return {
       product: {
@@ -815,86 +881,38 @@ export async function getProducts() {
         name: 'asc',
       },
     });
-    return products;
+
+    // Get all EANs to fetch images
+    const eans = products.map((product) => product.ean);
+
+    if (eans.length === 0) {
+      return products.map((product) => ({
+        ...product,
+        imageUrl: null,
+      }));
+    }
+
+    let imageMap = {};
+
+    // Always use the Images model (it exists in your schema)
+    const images = await prisma.images.findMany({
+      where: { ean: { in: eans } },
+    });
+
+    images.forEach((image) => {
+      imageMap[image.ean] = image.image;
+    });
+
+    // Add images to products
+    const productsWithImages = products.map((product) => ({
+      ...product,
+      imageUrl: imageMap[product.ean] || null,
+    }));
+
+    return productsWithImages;
   } catch (error) {
     console.error('Error fetching products:', error);
     return [];
-  }
-}
-
-export async function deleteProduct(prevState, formData) {
-  try {
-    const ean = formData.get('ean');
-
-    if (!ean) {
-      return {
-        success: false,
-        message: 'EAN is required to delete a product',
-      };
-    }
-
-    // First, check if the product exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { ean },
-      include: {
-        locations: {
-          include: {
-            history: true,
-          },
-        },
-      },
-    });
-
-    if (!existingProduct) {
-      return {
-        success: false,
-        message: 'Product not found',
-      };
-    }
-
-    // Check if product has locations assigned
-    if (existingProduct.locations.length > 0) {
-      return {
-        success: false,
-        message:
-          'Cannot delete product - it is assigned to locations. Please remove from all locations first.',
-      };
-    }
-
-    // Delete related images from both tables
-    await prisma.images.deleteMany({
-      where: { ean },
-    });
-
-    await prisma.productImage.deleteMany({
-      where: { ean },
-    });
-
-    // Delete the product
-    await prisma.product.delete({
-      where: { ean },
-    });
-
-    revalidatePath('/warehouse');
-    return {
-      success: true,
-      message: 'Product deleted successfully',
-    };
-  } catch (error) {
-    console.error('Delete product error:', error);
-
-    let errorMessage = 'Failed to delete product';
-    if (error.code === 'P2025') {
-      errorMessage = 'Product not found';
-    } else if (error.code === 'P2003') {
-      errorMessage = 'Cannot delete product due to existing references';
-    }
-
-    return {
-      success: false,
-      message: errorMessage,
-      error: error.message,
-    };
   }
 }
 

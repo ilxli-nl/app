@@ -1,5 +1,4 @@
 import localFont from 'next/font/local';
-import { CldContext } from 'next-cloudinary';
 import '@/assets/styles/globals.css';
 import Navbar from '@/components/navbar';
 import QueryProvider from './providers/QueryProvider';
@@ -29,12 +28,10 @@ export default function RootLayout({ children }) {
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          {/* <CldContext cloudName={process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}> */}
           <Navbar />
           {children}
           <ReactQueryDevtools initialIsOpen={false} />
           <Toaster />
-          {/* </CldContext> */}
         </body>
       </QueryProvider>
     </html>

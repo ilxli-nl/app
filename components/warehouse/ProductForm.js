@@ -8,7 +8,6 @@ import {
 } from '@/components/warehouse/actions';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { CldImage } from 'next-cloudinary';
 
 export default function ProductForm() {
   const [state, formAction] = useActionState(createOrUpdateProduct, null);
@@ -23,11 +22,90 @@ export default function ProductForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [cloudinaryError, setCloudinaryError] = useState('');
   const searchRef = useRef(null);
   const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // ... your existing useEffect hooks remain the same ...
+  // Fetch products and images on component mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const result = await getProductsAndLocations();
+        if (result && result.products) {
+          setProducts(result.products);
+          setFilteredProducts(result.products);
+
+          // Fetch images for all products
+          const eans = result.products.map((p) => p.ean);
+          if (eans.length > 0) {
+            const imagesResult = await getProductImages(eans);
+            setProductImages(imagesResult);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    }
+    loadData();
+  }, []);
+
+  // Filter products based on search term
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredProducts(products);
+    } else {
+      const filtered = products.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.ean.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredProducts(filtered);
+    }
+  }, [searchTerm, products]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
+        setShowDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Clear Cloudinary error when form is reset or editing changes
+  useEffect(() => {
+    if (cloudinaryError) {
+      setCloudinaryError('');
+    }
+  }, [isEditing, searchTerm, cloudinaryError]);
+
+  // Simulate upload progress for better UX
+  useEffect(() => {
+    if (isSubmitting && selectedFile) {
+      const interval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      return () => clearInterval(interval);
+    }
+  }, [isSubmitting, selectedFile]);
 
   const handleProductSelect = (product) => {
     setSelectedProduct(product);
@@ -36,21 +114,46 @@ export default function ProductForm() {
     setIsEditing(true);
 
     // Pre-fill the form with existing product data
-    document.getElementById('ean').value = product.ean;
-    document.getElementById('name').value = product.name;
-    document.getElementById('description').value = product.description || '';
+    setTimeout(() => {
+      const eanField = document.getElementById('ean');
+      const nameField = document.getElementById('name');
+      const descriptionField = document.getElementById('description');
+      const imageUrlField = document.getElementById('imageUrl');
 
-    // Set image preview if available
-    if (productImages[product.ean]) {
-      setImagePreview(productImages[product.ean]);
-    } else {
-      setImagePreview('');
-    }
+      if (eanField) eanField.value = product.ean;
+      if (nameField) nameField.value = product.name;
+      if (descriptionField) descriptionField.value = product.description || '';
+
+      // Set image preview if available
+      if (productImages[product.ean]) {
+        setImagePreview(productImages[product.ean]);
+        if (imageUrlField) imageUrlField.value = productImages[product.ean];
+      } else {
+        setImagePreview('');
+        if (imageUrlField) imageUrlField.value = '';
+      }
+    }, 0);
 
     // Clear any selected file
     setSelectedFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setShowDropdown(true);
+    if (!e.target.value) {
+      setSelectedProduct(null);
+      setIsEditing(false);
+      resetForm();
+    }
+  };
+
+  const handleSearchFocus = () => {
+    if (filteredProducts.length > 0) {
+      setShowDropdown(true);
     }
   };
 
@@ -80,6 +183,7 @@ export default function ProductForm() {
 
     setSelectedFile(file);
     setUploadProgress(0);
+    setCloudinaryError('');
 
     // Create preview
     const reader = new FileReader();
@@ -89,13 +193,15 @@ export default function ProductForm() {
     reader.readAsDataURL(file);
 
     // Clear the URL input when file is selected
-    document.getElementById('imageUrl').value = '';
+    const imageUrlField = document.getElementById('imageUrl');
+    if (imageUrlField) imageUrlField.value = '';
   };
 
   const handleRemoveFile = () => {
     setSelectedFile(null);
     setImagePreview('');
     setUploadProgress(0);
+    setCloudinaryError('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -104,7 +210,7 @@ export default function ProductForm() {
   const handleImageUrlChange = (e) => {
     const url = e.target.value;
     setImagePreview(url);
-    // Clear file selection when URL is entered
+    setCloudinaryError('');
     setSelectedFile(null);
     setUploadProgress(0);
     if (fileInputRef.current) {
@@ -112,49 +218,47 @@ export default function ProductForm() {
     }
   };
 
-  // Simulate upload progress for better UX
-  useEffect(() => {
-    if (isSubmitting && selectedFile) {
-      const interval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(interval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 200);
-
-      return () => clearInterval(interval);
-    }
-  }, [isSubmitting, selectedFile]);
-
   const handleFormSubmit = async (formData) => {
     setIsSubmitting(true);
     setUploadProgress(0);
+    setCloudinaryError('');
 
-    // Add the file to formData if selected
-    if (selectedFile) {
-      formData.append('imageFile', selectedFile);
-    }
+    try {
+      // Add the file to formData if selected
+      if (selectedFile) {
+        formData.append('imageFile', selectedFile);
+      }
 
-    // The server action will handle the upload and product creation/update
-    const result = await createOrUpdateProduct(null, formData);
+      const result = await createOrUpdateProduct(null, formData);
 
-    if (result?.success) {
-      setUploadProgress(100);
-      // Wait a bit to show completion
-      setTimeout(() => {
-        resetForm();
-        // Refresh the products list after successful submission
-        refreshProducts();
-      }, 1000);
-    } else {
+      if (result?.success) {
+        setUploadProgress(100);
+        setTimeout(() => {
+          resetForm();
+          refreshProducts();
+        }, 1000);
+      } else {
+        if (
+          result?.message?.includes('Cloudinary') ||
+          result?.message?.includes('upload')
+        ) {
+          setCloudinaryError(result.message);
+        }
+        setUploadProgress(0);
+      }
+
+      return result;
+    } catch (error) {
       setUploadProgress(0);
+      setCloudinaryError('An unexpected error occurred');
+      return {
+        success: false,
+        message: 'Failed to submit form',
+        error: error.message,
+      };
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
-    return result;
   };
 
   const refreshProducts = async () => {
@@ -166,8 +270,8 @@ export default function ProductForm() {
 
         // Refresh images
         const eans = updatedResult.products.map((p) => p.ean);
-        const imagesResult = await getProductImages(eans);
-        if (imagesResult) {
+        if (eans.length > 0) {
+          const imagesResult = await getProductImages(eans);
           setProductImages(imagesResult);
         }
       }
@@ -182,6 +286,7 @@ export default function ProductForm() {
     setImagePreview('');
     setSelectedFile(null);
     setUploadProgress(0);
+    setCloudinaryError('');
     setIsEditing(false);
 
     // Reset form fields
@@ -198,8 +303,6 @@ export default function ProductForm() {
     resetForm();
     setShowDropdown(false);
   };
-
-  // ... rest of your existing functions (handleSearchChange, handleSearchFocus) remain the same ...
 
   return (
     <form
@@ -219,20 +322,8 @@ export default function ProductForm() {
         <input
           type='text'
           value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setShowDropdown(true);
-            if (!e.target.value) {
-              setSelectedProduct(null);
-              setIsEditing(false);
-              resetForm();
-            }
-          }}
-          onFocus={() => {
-            if (filteredProducts.length > 0) {
-              setShowDropdown(true);
-            }
-          }}
+          onChange={handleSearchChange}
+          onFocus={handleSearchFocus}
           placeholder='Search by product name or EAN to edit'
           className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
         />
@@ -259,26 +350,25 @@ export default function ProductForm() {
               >
                 {productImages[product.ean] ? (
                   <div className='w-10 h-10 relative mr-3'>
-                    {productImages[product.ean].includes('cloudinary') ? (
-                      <CldImage
-                        width={40}
-                        height={40}
-                        src={productImages[product.ean]}
-                        alt={product.name}
-                        className='w-10 h-10 object-contain rounded'
-                      />
-                    ) : (
-                      <Image
-                        width={40}
-                        height={40}
-                        src={productImages[product.ean]}
-                        alt={product.name}
-                        className='w-10 h-10 object-contain rounded'
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    )}
+                    <Image
+                      width={40}
+                      height={40}
+                      src={productImages[product.ean]}
+                      alt={product.name}
+                      className='w-10 h-10 object-contain rounded'
+                      onError={(e) => {
+                        // Hide broken images
+                        e.target.style.display = 'none';
+                        // Show fallback
+                        const parent = e.target.parentElement;
+                        const fallback = document.createElement('div');
+                        fallback.className =
+                          'w-10 h-10 bg-gray-100 flex items-center justify-center rounded';
+                        fallback.innerHTML =
+                          '<span class="text-xs text-gray-500">No image</span>';
+                        parent.appendChild(fallback);
+                      }}
+                    />
                   </div>
                 ) : (
                   <div className='w-10 h-10 bg-gray-100 flex items-center justify-center mr-3 rounded'>
@@ -407,32 +497,27 @@ export default function ProductForm() {
           />
         </div>
 
+        {/* Cloudinary Error Message */}
+        {cloudinaryError && (
+          <div className='mt-2 p-2 bg-red-50 border border-red-200 rounded'>
+            <p className='text-red-600 text-sm'>{cloudinaryError}</p>
+          </div>
+        )}
+
         {/* Image Preview */}
         {imagePreview && (
           <div className='mt-4'>
             <div className='text-sm text-gray-600 mb-2'>Image Preview:</div>
             <div className='relative inline-block'>
               <div className='relative w-32 h-32 border border-gray-300 rounded-lg overflow-hidden'>
-                {imagePreview.startsWith('data:') ||
-                imagePreview.startsWith('http') ? (
-                  <Image
-                    width={128}
-                    height={128}
-                    src={imagePreview}
-                    alt='Preview'
-                    className='w-full h-full object-cover'
-                    onError={() => setImagePreview('')}
-                  />
-                ) : (
-                  <CldImage
-                    width={128}
-                    height={128}
-                    src={imagePreview}
-                    alt='Product preview'
-                    className='w-full h-full object-cover'
-                    sizes='128px'
-                  />
-                )}
+                <Image
+                  width={128}
+                  height={128}
+                  src={imagePreview}
+                  alt='Preview'
+                  className='w-full h-full object-cover'
+                  onError={() => setImagePreview('')}
+                />
               </div>
               <button
                 type='button'
