@@ -38,10 +38,10 @@ const AllOrders = ({page, account}) => {//{ page, account }
 
   return (
 <>
- <ul>
+ <ul className='md:m-5 lg:m-20'>
           {data.map((order) => (
             <li key={order.orderId}>
-<Card key={`order-${data?.orderId}`} className='mx-auto max-w-md overflow-hidden rounded-xl bg-white shadow-md md:max-w-2xl'>
+<Card key={`order-${data?.orderId}`} className='overflow-hidden rounded-xl bg-white shadow-md max-w-full'>
           <CardHeader>
             <CardTitle className='flex justify-between'>
               <div>

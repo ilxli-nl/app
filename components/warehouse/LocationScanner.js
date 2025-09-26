@@ -25,9 +25,7 @@ export default function LocationScanner() {
   }, []);
 
   return (
-    <div className='max-w-lg mx-auto p-4 bg-white rounded shadow'>
-      <h2 className='text-xl font-bold mb-4'>Location Scanner</h2>
-
+    <div className='max-w-full mx-auto p-4 bg-white rounded shadow'>
       <button
         onClick={() => setScanMode(!scanMode)}
         className='mb-4 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2'
