@@ -1,6 +1,5 @@
 'use client';
 
-import { useActionState } from 'react';
 import {
   createOrUpdateProduct,
   getProductsAndLocations,
@@ -10,7 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 
 export default function ProductForm() {
-  const [state, formAction] = useActionState(createOrUpdateProduct, null);
+  const [state, setState] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [products, setProducts] = useState([]);
   const [productImages, setProductImages] = useState({});
@@ -23,6 +22,8 @@ export default function ProductForm() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [cloudinaryError, setCloudinaryError] = useState('');
+  const [compressionQuality, setCompressionQuality] = useState(0.1);
+  const [maxWidth, setMaxWidth] = useState(400);
   const searchRef = useRef(null);
   const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -107,6 +108,84 @@ export default function ProductForm() {
     }
   }, [isSubmitting, selectedFile]);
 
+  /**
+   * Resize image before uploading
+   */
+  const resizeImage = (file, maxWidth, quality) => {
+    return new Promise((resolve, reject) => {
+      const img = document.createElement('img');
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        // Scale while preserving aspect ratio
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        // White background (for PNG → JPG)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const outputFormat = 'image/jpeg';
+        const outputQuality = Math.max(0.1, Math.min(1.0, quality));
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Failed to resize image'));
+              return;
+            }
+
+            const fileName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+            const resizedFile = new File([blob], fileName, {
+              type: outputFormat,
+              lastModified: Date.now(),
+            });
+
+            // Debugging
+            console.log('📊 Compression Results:');
+            console.log(
+              `Original: ${(file.size / 1024 / 1024).toFixed(2)} MB (${
+                file.type
+              })`
+            );
+            console.log(
+              `Compressed: ${(resizedFile.size / 1024 / 1024).toFixed(2)} MB (${
+                resizedFile.type
+              })`
+            );
+
+            resolve(resizedFile);
+
+            // cleanup
+            URL.revokeObjectURL(objectUrl);
+          },
+          outputFormat,
+          outputQuality
+        );
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Failed to load image'));
+      };
+
+      img.src = objectUrl;
+    });
+  };
+
   const handleProductSelect = (product) => {
     setSelectedProduct(product);
     setSearchTerm(`${product.name} (EAN: ${product.ean})`);
@@ -157,7 +236,7 @@ export default function ProductForm() {
     }
   };
 
-  const handleFileSelect = (event) => {
+  const handleFileSelect = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -181,20 +260,39 @@ export default function ProductForm() {
       return;
     }
 
-    setSelectedFile(file);
     setUploadProgress(0);
     setCloudinaryError('');
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target.result);
-    };
-    reader.readAsDataURL(file);
+    try {
+      let processedFile = file;
 
-    // Clear the URL input when file is selected
-    const imageUrlField = document.getElementById('imageUrl');
-    if (imageUrlField) imageUrlField.value = '';
+      // Skip resizing for SVG (vector) and GIF (animated) files
+      if (file.type !== 'image/svg+xml' && file.type !== 'image/gif') {
+        console.log('🔄 Starting image compression...');
+        processedFile = await resizeImage(file, maxWidth, compressionQuality);
+      } else {
+        console.log('⏩ Skipping compression for SVG/GIF file');
+      }
+
+      setSelectedFile(processedFile);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(processedFile);
+
+      // Clear the URL input when file is selected
+      const imageUrlField = document.getElementById('imageUrl');
+      if (imageUrlField) imageUrlField.value = '';
+    } catch (error) {
+      console.error('❌ Error processing image:', error);
+      alert('Failed to process image. Please try another file.');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleRemoveFile = () => {
@@ -218,44 +316,101 @@ export default function ProductForm() {
     }
   };
 
-  const handleFormSubmit = async (formData) => {
+  // NEW: Proper form submission handler
+  const handleFormSubmit = async (event) => {
+    event.preventDefault();
     setIsSubmitting(true);
     setUploadProgress(0);
     setCloudinaryError('');
+    setState(null);
 
     try {
-      // Add the file to formData if selected
-      if (selectedFile) {
-        formData.append('imageFile', selectedFile);
+      // Get form values
+      const form = event.currentTarget;
+      const ean = form.ean.value;
+      const name = form.name.value;
+      const description = form.description.value;
+      const imageUrl = form.imageUrl.value;
+
+      console.log('📝 Form values:', { ean, name, description, imageUrl });
+
+      // Create FormData manually
+      const formData = new FormData();
+      formData.append('ean', ean);
+      formData.append('name', name);
+      formData.append('description', description || '');
+
+      if (imageUrl) {
+        formData.append('imageUrl', imageUrl);
       }
 
+      // Add the compressed file if it exists
+      if (selectedFile) {
+        console.log('📤 Adding compressed file to FormData:');
+        console.log('File details:', {
+          name: selectedFile.name,
+          size: selectedFile.size,
+          type: selectedFile.type,
+        });
+
+        formData.append('imageFile', selectedFile);
+
+        // Verify the file was appended
+        console.log('🔍 FormData contents:');
+        for (let [key, value] of formData.entries()) {
+          if (value instanceof File) {
+            console.log(
+              `- ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`
+            );
+          } else {
+            console.log(`- ${key}: ${value}`);
+          }
+        }
+      } else {
+        console.log('📤 No file to upload');
+      }
+
+      // Add compression settings
+      formData.append(
+        'compressionSettings',
+        JSON.stringify({
+          maxWidth,
+          quality: compressionQuality,
+          timestamp: new Date().toISOString(),
+        })
+      );
+
+      console.log('🚀 Calling Server Action...');
+
+      // Call Server Action directly
       const result = await createOrUpdateProduct(null, formData);
 
+      // Update state with result
+      setState(result);
+
       if (result?.success) {
+        console.log('✅ Product created/updated successfully');
         setUploadProgress(100);
         setTimeout(() => {
           resetForm();
           refreshProducts();
         }, 1000);
       } else {
-        if (
-          result?.message?.includes('Cloudinary') ||
-          result?.message?.includes('upload')
-        ) {
+        console.error('❌ Operation failed:', result);
+        if (result?.message) {
           setCloudinaryError(result.message);
         }
         setUploadProgress(0);
       }
-
-      return result;
     } catch (error) {
+      console.error('❌ Form submission error:', error);
       setUploadProgress(0);
       setCloudinaryError('An unexpected error occurred');
-      return {
+      setState({
         success: false,
         message: 'Failed to submit form',
         error: error.message,
-      };
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -304,10 +459,11 @@ export default function ProductForm() {
     setShowDropdown(false);
   };
 
+  // Update the form to use onSubmit instead of action
   return (
     <form
       id='product-form'
-      action={handleFormSubmit}
+      onSubmit={handleFormSubmit} // CHANGED from action to onSubmit
       className='max-w-md mx-auto p-6 bg-white rounded-lg shadow-md'
     >
       <h2 className='text-2xl font-bold mb-6 text-gray-800'>
@@ -357,9 +513,7 @@ export default function ProductForm() {
                       alt={product.name}
                       className='w-10 h-10 object-contain rounded'
                       onError={(e) => {
-                        // Hide broken images
                         e.target.style.display = 'none';
-                        // Show fallback
                         const parent = e.target.parentElement;
                         const fallback = document.createElement('div');
                         fallback.className =
@@ -432,13 +586,64 @@ export default function ProductForm() {
           Product Image
         </label>
 
+        {/* Compression Settings */}
+        <div className='mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200'>
+          <label className='block text-sm font-medium text-gray-700 mb-3'>
+            Image Compression Settings
+          </label>
+
+          {/* Max Width Setting */}
+          <div className='mb-3'>
+            <label className='block text-xs text-gray-600 mb-1'>
+              Maximum Width: {maxWidth}px
+            </label>
+            <input
+              type='range'
+              min='400'
+              max='2000'
+              step='100'
+              value={maxWidth}
+              onChange={(e) => setMaxWidth(parseInt(e.target.value))}
+              className='w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer'
+            />
+            <div className='flex justify-between text-xs text-gray-500 mt-1'>
+              <span>400px</span>
+              <span>1200px</span>
+              <span>2000px</span>
+            </div>
+          </div>
+
+          {/* Quality Setting */}
+          <div>
+            <label className='block text-xs text-gray-600 mb-1'>
+              Quality: {Math.round(compressionQuality * 100)}%
+            </label>
+            <input
+              type='range'
+              min='10'
+              max='100'
+              step='5'
+              value={compressionQuality * 100}
+              onChange={(e) =>
+                setCompressionQuality(parseInt(e.target.value) / 100)
+              }
+              className='w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer'
+            />
+            <div className='flex justify-between text-xs text-gray-500 mt-1'>
+              <span>Smaller File</span>
+              <span>Balanced</span>
+              <span>Better Quality</span>
+            </div>
+          </div>
+        </div>
+
         {/* File Upload */}
         <div className='mb-3'>
           <label
             htmlFor='imageFile'
             className='block text-sm font-medium text-gray-700 mb-2'
           >
-            Upload from device (Recommended - uses Cloudinary)
+            Upload from device (Recommended - automatic compression)
           </label>
           <input
             ref={fileInputRef}
@@ -451,7 +656,8 @@ export default function ProductForm() {
             className='w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50'
           />
           <p className='text-xs text-gray-500 mt-1'>
-            Supported formats: JPEG, PNG, WEBP, GIF, SVG (Max 10MB)
+            Supported formats: JPEG, PNG, WEBP, GIF, SVG (Max 10MB).
+            JPEG/PNG/WEBP images will be automatically compressed.
           </p>
 
           {/* Upload Progress */}
@@ -484,7 +690,7 @@ export default function ProductForm() {
             htmlFor='imageUrl'
             className='block text-sm font-medium text-gray-700 mb-2'
           >
-            Image URL (Alternative)
+            Image URL (Alternative - no compression)
           </label>
           <input
             type='url'
@@ -510,9 +716,7 @@ export default function ProductForm() {
             <div className='text-sm text-gray-600 mb-2'>Image Preview:</div>
             <div className='relative inline-block'>
               <div className='relative w-32 h-32 border border-gray-300 rounded-lg overflow-hidden'>
-                <Image
-                  width={128}
-                  height={128}
+                <img
                   src={imagePreview}
                   alt='Preview'
                   className='w-full h-full object-cover'

@@ -13,7 +13,10 @@ const Database = async ({ searchParams }) => {
   if (session?.user.name == 'ilxli-nl') {
     return (
       <div className='bg-slate-300 grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-2 pb-20 sm:p-20 font-[family-name:var(--font-geist-sans)]'>
-        <main key={myRnId()} className='max-w-full items-center'>
+        <main
+          key={myRnId()}
+          className='flex flex-col mx-auto max-w-ful row-start-2 items-center sm:items-start'
+        >
           <Paginations />
           <AllOrders page={page} account={account} />
 

@@ -1,6 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb', // Increase to 10MB
+    },
+    // api: {
+    //   bodyParser: {
+    //     sizeLimit: '5mb',
+    //   },
+    //   responseLimit: '5mb',
+    // },
     dynamicIO: false,
     urlImports: ['https://api.pakketdienstqls.nl/pdf/labels/'],
   },
