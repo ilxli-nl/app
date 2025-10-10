@@ -2,162 +2,286 @@
 const { DateTime } = require('luxon');
 import { prisma } from '@/prisma';
 
-const accountData = { account: 'NL' };
+// Constants and configuration
+const BOL_API_BASE = process.env.BOLAPI;
+const DEFAULT_IMAGE = '/no_image.jpg';
+const IMAGE_CACHE_TTL = 1000 * 60 * 30; // 30 minutes
 
-// Helper functions
-function extractShipmentDetails(details) {
-  return {
-    s_salutationCode: details?.salutation || null,
-    s_firstName: details?.firstName || '',
-    s_surname: details?.surname || '',
-    s_streetName: details?.streetName || '',
-    s_houseNumber: details?.houseNumber || '',
-    s_houseNumberExtension: details?.houseNumberExtension || null,
-    s_zipCode: details?.zipCode || '',
-    s_city: details?.city || '',
-    s_countryCode: details?.countryCode || '',
-    email: details?.email || '',
-    language: details?.language || '',
-  };
+// Cache implementation with TTL
+class TTLCache {
+  constructor(ttl = IMAGE_CACHE_TTL) {
+    this.cache = new Map();
+    this.ttl = ttl;
+  }
+
+  set(key, value) {
+    this.cache.set(key, {
+      value,
+      expiry: Date.now() + this.ttl,
+    });
+  }
+
+  get(key) {
+    const item = this.cache.get(key);
+    if (!item) return null;
+
+    if (Date.now() > item.expiry) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return item.value;
+  }
+
+  has(key) {
+    return this.get(key) !== null;
+  }
 }
 
-function extractBillingDetails(details) {
-  return {
-    b_salutationCode: details?.salutation || null,
-    b_firstName: details?.firstName || '',
-    b_surname: details?.surname || '',
-    b_streetName: details?.streetName || '',
-    b_houseNumber: details?.houseNumber || '',
-    b_houseNumberExtension: details?.houseNumberExtension || null,
-    b_zipCode: details?.zipCode || '',
-    b_city: details?.city || '',
-    b_countryCode: details?.countryCode || '',
-    b_company: details?.company || null,
-  };
-}
+const imageCache = new TTLCache();
 
-function extractFulfillmentDetails(fulfilment) {
-  return {
-    latestDeliveryDate: fulfilment?.latestDeliveryDate
-      ? DateTime.fromISO(fulfilment.latestDeliveryDate).toISO()
-      : null,
-    exactDeliveryDate: fulfilment?.exactDeliveryDate
-      ? DateTime.fromISO(fulfilment.exactDeliveryDate).toISO()
-      : null,
-    expiryDate: fulfilment?.expiryDate
-      ? DateTime.fromISO(fulfilment.expiryDate).toISO()
-      : null,
-    offerCondition: fulfilment?.offerCondition || null,
-    cancelRequest: fulfilment?.cancelRequest ? 'true' : 'false',
-    method: fulfilment?.method || '',
-    distributionParty: fulfilment?.distributionParty || '',
+// Helper functions with validation - FIXED: Added email field
+const extractAddressDetails = (details, prefix, includeEmail = false) => {
+  const baseFields = {
+    [`${prefix}_salutationCode`]: details?.salutation || null,
+    [`${prefix}_firstName`]: details?.firstName || '',
+    [`${prefix}_surname`]: details?.surname || '',
+    [`${prefix}_streetName`]: details?.streetName || '',
+    [`${prefix}_houseNumber`]: details?.houseNumber || '',
+    [`${prefix}_houseNumberExtension`]: details?.houseNumberExtension || null,
+    [`${prefix}_zipCode`]: details?.zipCode || '',
+    [`${prefix}_city`]: details?.city || '',
+    [`${prefix}_countryCode`]: details?.countryCode || '',
   };
-}
+
+  // Add email only for shipment details
+  if (includeEmail) {
+    baseFields.email = details?.email || '';
+    baseFields.language = details?.language || '';
+  }
+
+  // Add company only for billing details
+  if (prefix === 'b') {
+    baseFields.b_company = details?.company || null;
+  }
+
+  return baseFields;
+};
+
+const extractShipmentDetails = (details) =>
+  extractAddressDetails(details, 's', true);
+const extractBillingDetails = (details) =>
+  extractAddressDetails(details, 'b', false);
+
+const extractFulfillmentDetails = (fulfilment) => ({
+  latestDeliveryDate: fulfilment?.latestDeliveryDate
+    ? DateTime.fromISO(fulfilment.latestDeliveryDate).toISO()
+    : null,
+  exactDeliveryDate: fulfilment?.exactDeliveryDate
+    ? DateTime.fromISO(fulfilment.exactDeliveryDate).toISO()
+    : null,
+  expiryDate: fulfilment?.expiryDate
+    ? DateTime.fromISO(fulfilment.expiryDate).toISO()
+    : null,
+  offerCondition: fulfilment?.offerCondition || null,
+  cancelRequest: fulfilment?.cancelRequest ? 'true' : 'false',
+  method: fulfilment?.method || '',
+  distributionParty: fulfilment?.distributionParty || '',
+});
+
+// Token management with caching
+const tokenCache = new TTLCache(1000 * 60 * 5); // 5 minutes TTL for tokens
 
 export const Token = async (account) => {
-  const accountData = { account: account };
+  if (!account) throw new Error('Account is required');
+
+  const cacheKey = `token:${account}`;
+  const cachedToken = tokenCache.get(cacheKey);
+  if (cachedToken) return cachedToken;
 
   const response = await fetch('https://ampx.nl/token.php', {
     method: 'POST',
     cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(accountData),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ account }),
   });
-  const result = await response.json();
 
-  return {
-    token: result,
-    account: account,
-  };
+  if (!response.ok) throw new Error('Token request failed');
+
+  const result = await response.json();
+  const tokenData = { token: result, account };
+
+  tokenCache.set(cacheKey, tokenData);
+  return tokenData;
 };
 
+// Database operations
 const AddDBImage = async (ean, image) => {
   await prisma.images.upsert({
     where: { ean },
-    update: { ean, image },
+    update: { image },
     create: { ean, image },
   });
-  return 'ok';
 };
 
-const imageCache = new Map();
+const AddDBOrders = async (ordersData) => {
+  if (!ordersData.length) return;
 
-export const OrderImg = async (ean, account) => {
-  if (imageCache.has(ean)) {
-    return imageCache.get(ean);
-  }
-
-  const imgFromDB = await prisma.images.findFirst({ where: { ean } });
-
-  if (imgFromDB) {
-    imageCache.set(ean, imgFromDB.image);
-    return imgFromDB.image;
-  }
-
-  const tok = await Token(account);
-  const token = tok.token;
-
-  const response = await fetch(
-    `${process.env.BOLAPI}retailer/products/${ean}/assets`,
-    {
-      cache: 'force-cache',
-      method: 'GET',
-      headers: {
-        Accept: 'application/vnd.retailer.v10+json',
-        Authorization: 'Bearer ' + token,
-      },
-    }
+  await prisma.$transaction(
+    ordersData.map((data) =>
+      prisma.orders.upsert({
+        where: { orderItemId: data.orderItemId },
+        update: {},
+        create: data,
+      })
+    )
   );
-
-  if (!response.ok) {
-    return '/no_image.jpg';
-  }
-
-  const images = await response.json();
-  const img = images.assets[0]?.variants[1]?.url || '/no_image.jpg';
-
-  await AddDBImage(ean, img);
-  imageCache.set(ean, img);
-
-  return img;
 };
 
-export const AddDB = async (data) => {
-  await prisma.orders.upsert({
-    where: { orderItemId: data.orderItemId },
-    update: {},
-    create: data,
-  });
-};
+// Image handling with better error management
+export const OrderImg = async (ean, account) => {
+  if (!ean) return DEFAULT_IMAGE;
 
-export const OrderBol = async (odrId, account) => {
-  if (!odrId || typeof odrId !== 'string') {
-    throw new Error('Invalid order ID');
-  }
-  if (!account || typeof account !== 'string') {
-    throw new Error('Invalid account');
-  }
+  const cachedImage = imageCache.get(ean);
+  if (cachedImage) return cachedImage;
 
   try {
-    const existingOrders = await prisma.orders.findMany({
-      where: { orderId: odrId },
-    });
-
-    if (existingOrders.length > 0) {
-      return existingOrders;
+    const dbImage = await prisma.images.findFirst({ where: { ean } });
+    if (dbImage) {
+      imageCache.set(ean, dbImage.image);
+      return dbImage.image;
     }
 
     const { token } = await Token(account);
-    if (!token) {
-      throw new Error('Failed to get authentication token');
+    const response = await fetch(
+      `${BOL_API_BASE}retailer/products/${ean}/assets`,
+      {
+        method: 'GET',
+        headers: {
+          Accept: 'application/vnd.retailer.v10+json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) return DEFAULT_IMAGE;
+
+    const images = await response.json();
+    const imageUrl = images.assets[0]?.variants[1]?.url || DEFAULT_IMAGE;
+
+    await AddDBImage(ean, imageUrl);
+    imageCache.set(ean, imageUrl);
+
+    return imageUrl;
+  } catch (error) {
+    console.error(`Image fetch failed for EAN ${ean}:`, error);
+    return DEFAULT_IMAGE;
+  }
+};
+
+// Order processing with improved error handling
+const processOrderItem = async (item, order, account) => {
+  const ean = item.product?.ean;
+  if (!ean) {
+    console.warn('Missing EAN for item:', item.orderItemId);
+    return null;
+  }
+
+  try {
+    const [image] = await Promise.all([
+      OrderImg(ean, account).catch(() => DEFAULT_IMAGE),
+    ]);
+
+    return {
+      orderId: order.orderId,
+      orderItemId: item.orderItemId,
+      account,
+      dateTimeOrderPlaced: order.orderPlacedDateTime,
+      ...extractShipmentDetails(order.shipmentDetails),
+      ...extractBillingDetails(order.billingDetails),
+      offerId: item.offer?.offerId || '',
+      ean,
+      title: item.product?.title || 'Unknown Product',
+      img: image,
+      url: `https://www.bol.com/nl/nl/s/?searchtext=${ean}`,
+      quantity: item.quantity || 1,
+      unitPrice: item.unitPrice || 0,
+      commission: item.commission || 0,
+      ...extractFulfillmentDetails(item.fulfilment),
+      fulfilled: '',
+      qls_time: DateTime.now().toISO(),
+    };
+  } catch (error) {
+    console.error(`Error processing item ${item.orderItemId}:`, error);
+    return null;
+  }
+};
+
+export const OrderBol = async (orderId, account) => {
+  if (!orderId?.trim()) throw new Error('Invalid order ID');
+  if (!account?.trim()) throw new Error('Invalid account');
+
+  try {
+    // Check for existing orders
+    const existingOrders = await prisma.orders.findMany({
+      where: { orderId },
+    });
+
+    if (existingOrders.length > 0) return existingOrders;
+
+    // Fetch order details
+    const { token } = await Token(account);
+    const response = await fetch(`${BOL_API_BASE}retailer/orders/${orderId}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.retailer.v10+json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+
+    const order = await response.json();
+    if (!order?.orderItems?.length) return [];
+
+    // Process items in parallel with error handling
+    const processingResults = await Promise.allSettled(
+      order.orderItems.map((item) => processOrderItem(item, order, account))
+    );
+
+    const validItems = processingResults
+      .filter(
+        (result) => result.status === 'fulfilled' && result.value !== null
+      )
+      .map((result) => result.value);
+
+    // Bulk insert valid items
+    if (validItems.length > 0) {
+      await AddDBOrders(validItems);
     }
 
+    return validItems;
+  } catch (error) {
+    console.error('OrderBol error:', {
+      error: error.message,
+      orderId,
+      account,
+      timestamp: DateTime.now().toISO(),
+    });
+    throw error;
+  }
+};
+
+// Batch order processing
+// In your actions.js - update the ComboOrders function
+export const ComboOrders = async (page, account) => {
+  if (!account?.trim()) throw new Error('Invalid account');
+
+  try {
+    const { token } = await Token(account);
     const response = await fetch(
-      `${process.env.BOLAPI}retailer/orders/${odrId}`,
+      `${BOL_API_BASE}retailer/orders?page=${page}`,
       {
-        cache: 'force-cache',
         method: 'GET',
         headers: {
           Accept: 'application/vnd.retailer.v10+json',
@@ -167,138 +291,58 @@ export const OrderBol = async (odrId, account) => {
     );
 
     if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
+      // More specific error messages based on status code
+      const errorMessage = await getErrorMessage(response);
+      throw new Error(`Failed to fetch orders: ${errorMessage}`);
     }
 
-    const order = await response.json();
-    if (!order?.orderItems?.length) {
+    const data = await response.json();
+
+    // Handle case where orders array exists but is empty
+    if (!data.orders || data.orders.length === 0) {
       return [];
     }
 
-    const processingResults = await Promise.allSettled(
-      order.orderItems.map(async (item) => {
-        try {
-          const ean = item.product?.ean;
-          if (!ean) {
-            console.warn('Missing EAN for item:', item.orderItemId);
-            return null;
-          }
-
-          const [img] = await Promise.all([
-            OrderImg(ean, account).catch((e) => {
-              console.error(`Failed to get image for EAN ${ean}:`, e);
-              return '/no_image.jpg';
-            }),
-          ]);
-
-          const orderData = {
-            orderId: order.orderId,
-            orderItemId: item.orderItemId,
-            account: account,
-            dateTimeOrderPlaced: order.orderPlacedDateTime,
-            ...extractShipmentDetails(order.shipmentDetails),
-            ...extractBillingDetails(order.billingDetails),
-            offerId: item.offer?.offerId || '',
-            ean: ean,
-            title: item.product?.title || 'Unknown Product',
-            img: img,
-            url: `https://www.bol.com/nl/nl/s/?searchtext=${ean}`,
-            quantity: item.quantity || 1,
-            unitPrice: item.unitPrice || 0,
-            commission: item.commission || 0,
-            ...extractFulfillmentDetails(item.fulfilment),
-            fulfilled: '',
-            qls_time: DateTime.now().toISO(),
-          };
-
-          return orderData;
-        } catch (itemError) {
-          console.error(
-            `Error processing item ${item.orderItemId}:`,
-            itemError
-          );
-          return null;
-        }
-      })
+    // Process orders in parallel with error handling
+    const orderDetails = await Promise.allSettled(
+      data.orders.map((order) => OrderBol(order.orderId, account))
     );
 
-    const validItems = processingResults
-      .filter((result) => result.status === 'fulfilled' && result.value)
-      .map((result) => result.value);
-
-    if (validItems.length > 0) {
-      await prisma.$transaction(
-        validItems.map((data) =>
-          prisma.orders.upsert({
-            where: { orderItemId: data.orderItemId },
-            update: {},
-            create: data,
-          })
-        )
-      );
-    }
-
-    return validItems;
+    return data.orders.map((order, index) => ({
+      orderId: order.orderId,
+      details:
+        orderDetails[index].status === 'fulfilled'
+          ? orderDetails[index].value
+          : [],
+    }));
   } catch (error) {
-    console.error('Error in OrderBol:', {
+    console.error('ComboOrders error:', {
       error: error.message,
-      orderId: odrId,
+      page,
       account,
-      timestamp: new Date().toISOString(),
+      timestamp: DateTime.now().toISO(),
     });
-    throw error;
+
+    // Re-throw with more context
+    throw new Error(`ComboOrders failed for page ${page}: ${error.message}`);
   }
 };
 
+async function getErrorMessage(response) {
+  try {
+    const errorData = await response.json();
+    return errorData?.detail || errorData?.message || `HTTP ${response.status}`;
+  } catch {
+    return `HTTP ${response.status} - ${response.statusText}`;
+  }
+}
+
+// Simple utilities (unchanged as they're already minimal)
 export const LabelQLS = async (odr) => {
-  const basic =
-    'Basic ' + Buffer.from(`${process.env.CRIDIT}`).toString('base64');
-  const lab =
-    'https://api.pakketdienstqls.nl/pdf/labels/d6658315-1992-45fb-8abe-5461c771778f.pdf?token=f546c271-10a1-49a7-a7e6-de53c9c6727a&size=a6';
-  return lab;
+  return 'https://api.pakketdienstqls.nl/pdf/labels/d6658315-1992-45fb-8abe-5461c771778f.pdf?token=f546c271-10a1-49a7-a7e6-de53c9c6727a&size=a6';
 };
 
 export const SubmitForm = async (value) => {
-  console.log('Form submitted: ', value);
+  console.log('Form submitted:', value);
   return { success: true, message: 'Form submitted successfully' };
-};
-
-//export default SubmitForm;
-
-/// working orders!
-
-export const ComboOrders = async (page, account) => {
-  const tok = await Token(account);
-  const token = tok.token;
-
-  const response = await fetch(
-    `${process.env.BOLAPI}retailer/orders?page=${page}`,
-    {
-      method: 'GET',
-      cache: 'no-store',
-      headers: {
-        Accept: 'application/vnd.retailer.v10+json',
-        Authorization: 'Bearer ' + token,
-      },
-    }
-  );
-
-  const p = await response.json();
-
-  if (!p.orders) {
-    return [];
-  }
-
-  // Process all orders in parallel
-  const orderPromises = p.orders.map((odr) => OrderBol(odr.orderId, account));
-  const orderDetails = await Promise.all(orderPromises);
-
-  //console.log(orderDetails);
-
-  // Combine orderId with its details
-  const result = p.orders.map((odr, index) => ({
-    orderId: odr.orderId,
-    details: orderDetails[index],
-  }));
-  return result;
 };
