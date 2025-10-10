@@ -1,6 +1,6 @@
 'use server';
-const { DateTime } = require('luxon');
-import { prisma } from '@/prisma';
+import { DateTime } from 'luxon';
+import { prisma } from '../../prisma.js';
 
 // Constants and configuration
 const BOL_API_BASE = process.env.BOLAPI;
