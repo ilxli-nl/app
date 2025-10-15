@@ -347,66 +347,17 @@ export const SubmitForm = async (value) => {
   return { success: true, message: 'Form submitted successfully' };
 };
 
-export const sendBol = async (
-  barcode,
-  account,
-  orderItemId,
-  countryPost = process.env.COUNTRY_POST
-) => {
-  const { token } = await Token(account);
-  if (!barcode || !token || !orderItemId) {
-    throw new Error('Missing required parameters for sendBol()');
-  }
+// Helper: fetch unfulfilled orders
+async function getPendingOrders(account = 'NL', page = 1, perPage = 4000) {
+  const skip = (page - 1) * perPage;
 
-  const body = {
-    orderItems: [
-      {
-        orderItemId: orderItemId,
-        quantity: 1,
-      },
-    ],
-    transport: {
-      transporterCode: countryPost || 'TNT', // fallback if not defined
-      trackAndTrace: barcode,
+  return prisma.orders.findMany({
+    where: {
+      OR: [{ fulfilled: '' }, { fulfilled: null }],
+      account,
     },
-  };
-
-  try {
-    const response = await fetch('https://api.bol.com/retailer/shipments', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.retailer.v10+json',
-        'Content-Type': 'application/vnd.retailer.v10+json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    let data = null;
-    try {
-      data = await response.json();
-    } catch (err) {
-      console.error('Failed to parse JSON from sendBol:', err);
-    }
-
-    if (!response.ok) {
-      console.error('sendBol API error:', response.status, data);
-      throw new Error(`Bol.com shipment failed: ${response.statusText}`);
-    }
-
-    console.log('✅ Shipment successfully sent to Bol.com:', data);
-    return data;
-  } catch (error) {
-    console.error('sendBol failed:', error.message);
-    throw error;
-  }
-};
-
-// async function testSendShipment() {
-//   const { token } = await Token('myBolAccount');
-//   const result = await sendBol('JVGL05857768002037813585', token, '123456789', 'TNT');
-//   console.log('Response from Bol:', result);
-// }
-
-// testSendShipment();
-//await sendBol(barcode, token, orderItemId);
+    orderBy: { dateTimeOrderPlaced: 'desc' },
+    skip,
+    take: perPage,
+  });
+}

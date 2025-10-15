@@ -88,6 +88,8 @@ const OrderDone = ({ data }) => {
                           {data.s_houseNumberExtension}
                         </p>
                         {data.method}
+                        <p><strong>{data.fulfilled}</strong></p>
+                        
                       </CardDescription>
                     </div>
                   </div>

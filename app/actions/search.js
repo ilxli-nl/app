@@ -7,7 +7,7 @@ export async function searchOrders(query) {
     where: {
       OR: [
         { orderId: { contains: query, lte: 'insensitive' } },
-
+        { fulfilled: { contains: query, lte: 'insensitive' } },
         { title: { contains: query } },
         { s_zipCode: { contains: query, lte: 'insensitive' } },
         { s_firstName: { contains: query, lte: 'insensitive' } },
