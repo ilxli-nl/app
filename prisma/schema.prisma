@@ -25,11 +25,13 @@ model Images {
 }
 
 model Labels {
-  order       String  @id @unique
+  orderItemId String   @id @unique
+  order       String
   Name        String
   Address     String
-  orderItemId String
   Barcode     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model token {
@@ -91,7 +93,7 @@ model Product {
   description String?           @db.VarChar(500)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
-  imageUrl    String? // Add this field
+  imageUrl    String?
   locations   ProductLocation[]
 }
 
@@ -122,7 +124,7 @@ model ProductLocationHistory {
   id                String           @id @default(uuid())
   recordId          String
   userId            String
-  user              User             @relation(fields: [userId], references: [id]) // Add this relation
+  user              User             @relation(fields: [userId], references: [id])
   action            String
   field             String?
   oldValue          String?

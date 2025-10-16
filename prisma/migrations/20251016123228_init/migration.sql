@@ -25,14 +25,16 @@ CREATE TABLE `Images` (
 
 -- CreateTable
 CREATE TABLE `Labels` (
+    `orderItemId` VARCHAR(191) NOT NULL,
     `order` VARCHAR(191) NOT NULL,
     `Name` VARCHAR(191) NOT NULL,
     `Address` VARCHAR(191) NOT NULL,
-    `orderItemId` VARCHAR(191) NOT NULL,
     `Barcode` VARCHAR(191) NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `Labels_order_key`(`order`),
-    PRIMARY KEY (`order`)
+    UNIQUE INDEX `Labels_orderItemId_key`(`orderItemId`),
+    PRIMARY KEY (`orderItemId`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -101,9 +103,9 @@ CREATE TABLE `Product` (
     `ean` VARCHAR(191) NOT NULL,
     `name` VARCHAR(500) NOT NULL,
     `description` VARCHAR(500) NULL,
-    `imageUrl` VARCHAR(191) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
+    `imageUrl` VARCHAR(191) NULL,
 
     UNIQUE INDEX `Product_ean_key`(`ean`),
     PRIMARY KEY (`id`)
@@ -147,6 +149,26 @@ CREATE TABLE `ProductLocationHistory` (
     `productLocationId` VARCHAR(191) NULL,
 
     INDEX `ProductLocationHistory_recordId_idx`(`recordId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `ProductImage` (
+    `id` VARCHAR(191) NOT NULL,
+    `ean` VARCHAR(191) NOT NULL,
+    `imageUrl` VARCHAR(191) NOT NULL,
+    `publicId` VARCHAR(191) NULL,
+    `fileName` VARCHAR(191) NULL,
+    `fileSize` INTEGER NULL,
+    `mimeType` VARCHAR(191) NULL,
+    `format` VARCHAR(191) NULL,
+    `width` INTEGER NULL,
+    `height` INTEGER NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `ProductImage_ean_key`(`ean`),
+    INDEX `ProductImage_ean_idx`(`ean`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
