@@ -34,6 +34,22 @@ model Labels {
   updatedAt   DateTime @updatedAt
 }
 
+model OrderScan {
+  id          String   @id @default(uuid())
+  orderItemId String   @unique
+  barcode     String
+  scannedAt   DateTime @default(now())
+  scannedBy   String   @default("scanner")
+  status      String   @default("scanned")
+
+  // Relation to Orders table
+  order Orders @relation(fields: [orderItemId], references: [orderItemId])
+
+  @@index([barcode])
+  @@index([scannedAt])
+  @@index([status])
+}
+
 model token {
   id      String  @id @unique
   dbtoken String?
@@ -43,7 +59,7 @@ model token {
 
 model Orders {
   orderId                String
-  orderItemId            String    @id @unique
+  orderItemId            String     @id @unique
   account                String
   dateTimeOrderPlaced    String?
   s_salutationCode       String
@@ -69,7 +85,7 @@ model Orders {
   b_company              String?
   offerId                String?
   ean                    String?
-  title                  String    @db.VarChar(500)
+  title                  String     @db.VarChar(500)
   img                    String?
   url                    String?
   quantity               Int?
@@ -84,6 +100,7 @@ model Orders {
   distributionParty      String?
   fulfilled              String?
   qls_time               DateTime?
+  OrderScan              OrderScan?
 }
 
 model Product {

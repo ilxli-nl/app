@@ -1,8 +1,7 @@
 'use server';
 
 import { prisma } from '@/prisma';
-
-const BOL_API_BASE = 'https://api.bol.com/';
+const BOL_API_BASE = process.env.BOLAPI;
 const IMAGE_CACHE_TTL = 1000 * 60 * 5;
 
 // --- Cache class for tokens ---
@@ -238,7 +237,7 @@ export async function syncSpecificOrders(orderIds, account = 'NL') {
 
       // Find the order in database
       const order = await prisma.orders.findFirst({
-        where: { orderId },
+        where: { orderId, account },
       });
 
       if (!order) {
@@ -255,28 +254,28 @@ export async function syncSpecificOrders(orderIds, account = 'NL') {
 
     return {
       success: true,
-      message: `Manually synced ${updatedCount} orders`,
+      message: `Manually synced ${updatedCount} orders for account ${account}`,
       updatedCount,
     };
   } catch (error) {
     console.error('Manual sync error:', error);
     return {
       success: false,
-      message: `Manual sync failed: ${error.message}`,
+      message: `Manual sync failed for account ${account}: ${error.message}`,
       updatedCount: 0,
     };
   }
 }
 
-// --- Main sync function with comprehensive logging ---
-export async function UpdateBolBarcodes(page = 1, account = 'NL') {
+// --- Sync single account ---
+async function syncAccount(account) {
   try {
-    console.log('🚀 Starting UpdateBolBarcodes...');
+    console.log(`🚀 Starting sync for account: ${account}`);
 
     const token = await Token(account);
-    console.log('✅ Token obtained');
+    console.log(`✅ Token obtained for ${account}`);
 
-    // Get ALL orders (not just those without barcodes) to see what we have
+    // Get ALL orders for this account
     const allOrders = await prisma.orders.findMany({
       where: { account },
       take: 200,
@@ -290,19 +289,22 @@ export async function UpdateBolBarcodes(page = 1, account = 'NL') {
       },
     });
 
-    console.log(`📦 Found ${allOrders.length} total orders in database`);
+    console.log(
+      `📦 Found ${allOrders.length} total orders for account ${account}`
+    );
 
     if (allOrders.length === 0) {
       return {
         success: false,
-        message: 'No orders found in database',
+        message: `No orders found for account ${account}`,
         updatedCount: 0,
+        account,
       };
     }
 
     // Show recent orders
-    console.log('📋 Recent orders in database (last 10):');
-    allOrders.slice(0, 10).forEach((order) => {
+    console.log(`📋 Recent orders for ${account} (last 5):`);
+    allOrders.slice(0, 5).forEach((order) => {
       console.log(
         `   - ${order.orderId} (${order.dateTimeOrderPlaced}) - ${order.s_firstName} ${order.s_surname}`
       );
@@ -311,43 +313,42 @@ export async function UpdateBolBarcodes(page = 1, account = 'NL') {
     const shipments = await fetchShipments(token.token);
 
     if (Object.keys(shipments).length === 0) {
-      console.log('❌ No shipments found from Bol.com');
+      console.log(`❌ No shipments found from Bol.com for account ${account}`);
       return {
         success: false,
-        message: 'No shipments found from Bol.com',
+        message: `No shipments found from Bol.com for account ${account}`,
         updatedCount: 0,
+        account,
       };
     }
 
     console.log(
-      '📦 Shipments found from Bol.com:',
+      `📦 Shipments found from Bol.com for ${account}:`,
       Object.keys(shipments).length
     );
-    console.log(
-      '🔍 Recent shipment order IDs (last 10):',
-      Object.keys(shipments).slice(0, 10)
-    );
 
-    // Check for ANY matches between our orders and shipments
+    // Check for matches between our orders and shipments
     let updatedCount = 0;
     let matchedOrders = [];
 
     for (const order of allOrders) {
       if (shipments[order.orderId]) {
         matchedOrders.push(order);
-        console.log(`✅ MATCH FOUND: ${order.orderId} has shipment!`);
+        console.log(
+          `✅ MATCH FOUND for ${account}: ${order.orderId} has shipment!`
+        );
       }
     }
 
     console.log(
-      `🎯 Found ${matchedOrders.length} matching orders out of ${allOrders.length} total orders`
+      `🎯 Found ${matchedOrders.length} matching orders out of ${allOrders.length} total orders for ${account}`
     );
 
     // Process matching orders
     for (const order of matchedOrders) {
       const shipmentId = shipments[order.orderId];
       console.log(
-        `🔍 Processing order: ${order.orderId} with shipment: ${shipmentId}`
+        `🔍 Processing order for ${account}: ${order.orderId} with shipment: ${shipmentId}`
       );
 
       const barcode = await getShipmentBarcode(shipmentId, token.token);
@@ -361,51 +362,26 @@ export async function UpdateBolBarcodes(page = 1, account = 'NL') {
       const result = await updateBarcode(order.orderItemId, barcode);
       if (result.success) {
         updatedCount++;
-        console.log(`🎉 Successfully updated order: ${order.orderId}`);
+        console.log(
+          `🎉 Successfully updated order for ${account}: ${order.orderId}`
+        );
       } else {
         console.log(
-          `❌ Failed to update order: ${order.orderId} - ${result.error}`
+          `❌ Failed to update order for ${account}: ${order.orderId} - ${result.error}`
         );
-      }
-    }
-
-    // Analysis of the mismatch
-    if (matchedOrders.length === 0) {
-      console.log('\n🔍 ANALYSIS: Why no matches?');
-      console.log('   - Database orders might be too old or too new');
-      console.log('   - Orders might not be shipped yet');
-      console.log('   - Different Bol.com account?');
-      console.log('   - Order ID format mismatch');
-
-      // Check if there are any partial matches or similar patterns
-      const dbOrderIds = allOrders.map((o) => o.orderId);
-      const shipmentIds = Object.keys(shipments);
-
-      // Look for any partial matches (first few characters)
-      let partialMatches = 0;
-      dbOrderIds.forEach((dbId) => {
-        shipmentIds.forEach((shipId) => {
-          if (dbId.substring(0, 6) === shipId.substring(0, 6)) {
-            partialMatches++;
-            console.log(`   ⚠️ Partial match: ${dbId} vs ${shipId}`);
-          }
-        });
-      });
-
-      if (partialMatches > 0) {
-        console.log(`   🔍 Found ${partialMatches} partial order ID matches`);
       }
     }
 
     const message =
       matchedOrders.length > 0
-        ? `Updated ${updatedCount} labels with barcodes`
-        : `No matching orders found. Check if orders are shipped or account mismatch.`;
+        ? `Updated ${updatedCount} labels with barcodes for account ${account}`
+        : `No matching orders found for account ${account}. Check if orders are shipped.`;
 
     return {
       success: updatedCount > 0,
       message,
       updatedCount,
+      account,
       analysis: {
         totalOrders: allOrders.length,
         totalShipments: Object.keys(shipments).length,
@@ -414,11 +390,70 @@ export async function UpdateBolBarcodes(page = 1, account = 'NL') {
       },
     };
   } catch (error) {
+    console.error(`❌ Sync error for account ${account}:`, error);
+    return {
+      success: false,
+      message: `Error for account ${account}: ${error.message}`,
+      updatedCount: 0,
+      account,
+    };
+  }
+}
+
+// --- Main sync function that syncs all accounts ---
+export async function UpdateBolBarcodes(page = 1, account = 'ALL') {
+  try {
+    console.log('🚀 Starting UpdateBolBarcodes for all accounts...');
+
+    const accounts = ['NL', 'BE', 'NL_NEW'];
+    const results = [];
+
+    // Sync each account one by one
+    for (const acc of accounts) {
+      console.log(`\n📋 ===== PROCESSING ACCOUNT: ${acc} =====`);
+      const result = await syncAccount(acc);
+      results.push(result);
+      console.log(`📋 ===== FINISHED ACCOUNT: ${acc} =====\n`);
+    }
+
+    // Calculate totals
+    const totalUpdated = results.reduce(
+      (sum, result) => sum + result.updatedCount,
+      0
+    );
+    const successfulAccounts = results
+      .filter((result) => result.success)
+      .map((result) => result.account);
+    const failedAccounts = results
+      .filter((result) => !result.success)
+      .map((result) => result.account);
+
+    const overallMessage =
+      `Sync completed. Updated ${totalUpdated} barcodes across all accounts. ` +
+      `Successful: ${successfulAccounts.join(', ')}. ` +
+      `Failed: ${
+        failedAccounts.length > 0 ? failedAccounts.join(', ') : 'None'
+      }`;
+
+    return {
+      success: totalUpdated > 0,
+      message: overallMessage,
+      updatedCount: totalUpdated,
+      accountResults: results,
+      analysis: {
+        totalAccounts: accounts.length,
+        successfulAccounts: successfulAccounts.length,
+        failedAccounts: failedAccounts.length,
+        totalUpdated,
+      },
+    };
+  } catch (error) {
     console.error('❌ UpdateBolBarcodes error:', error);
     return {
       success: false,
       message: `Error: ${error.message}`,
       updatedCount: 0,
+      accountResults: [],
     };
   }
 }
@@ -432,6 +467,7 @@ export async function getOrders(limit = 2000) {
       select: {
         orderId: true,
         orderItemId: true,
+        account: true,
         s_firstName: true,
         s_surname: true,
         s_streetName: true,
@@ -507,6 +543,35 @@ export async function getProductImages(eans) {
     return { success: true, data: images };
   } catch (e) {
     return { success: false, error: e.message };
+  }
+}
+
+export async function getOrderWithLabel(orderItemId) {
+  try {
+    // Fetch order and label data
+    const [order, label] = await Promise.all([
+      prisma.orders.findUnique({
+        where: { orderItemId },
+      }),
+      prisma.labels.findUnique({
+        where: { orderItemId },
+      }),
+    ]);
+
+    if (!order) {
+      return { success: false, error: 'Order not found' };
+    }
+
+    return {
+      success: true,
+      data: {
+        order,
+        label,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching order details:', error);
+    return { success: false, error: 'Failed to fetch order details' };
   }
 }
 

@@ -38,6 +38,22 @@ CREATE TABLE `Labels` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `OrderScan` (
+    `id` VARCHAR(191) NOT NULL,
+    `orderItemId` VARCHAR(191) NOT NULL,
+    `barcode` VARCHAR(191) NOT NULL,
+    `scannedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `scannedBy` VARCHAR(191) NOT NULL DEFAULT 'scanner',
+    `status` VARCHAR(191) NOT NULL DEFAULT 'scanned',
+
+    UNIQUE INDEX `OrderScan_orderItemId_key`(`orderItemId`),
+    INDEX `OrderScan_barcode_idx`(`barcode`),
+    INDEX `OrderScan_scannedAt_idx`(`scannedAt`),
+    INDEX `OrderScan_status_idx`(`status`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `token` (
     `id` VARCHAR(191) NOT NULL,
     `dbtoken` VARCHAR(191) NULL,
@@ -171,6 +187,9 @@ CREATE TABLE `ProductImage` (
     INDEX `ProductImage_ean_idx`(`ean`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `OrderScan` ADD CONSTRAINT `OrderScan_orderItemId_fkey` FOREIGN KEY (`orderItemId`) REFERENCES `Orders`(`orderItemId`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `ProductLocation` ADD CONSTRAINT `ProductLocation_productId_fkey` FOREIGN KEY (`productId`) REFERENCES `Product`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
