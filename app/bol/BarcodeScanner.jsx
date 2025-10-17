@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { registerBarcodeScan, getRecentScans } from '../actions/scanActions';
+import Image from 'next/image';
 
 export default function BarcodeScanner() {
   const [scanResult, setScanResult] = useState(null);
@@ -242,9 +243,11 @@ export default function BarcodeScanner() {
                       <div key={item.orderItemId} className="flex items-center space-x-4 p-3 border border-gray-200 rounded-lg bg-gray-50">
                         <div className="flex-shrink-0">
                           {productImage ? (
-                            <img 
+                            <Image
                               src={productImage} 
                               alt={item.title}
+                              width={50}
+            height={50}
                               className="w-16 h-16 object-cover rounded border"
                               onError={(e) => {
                                 e.target.style.display = 'none';

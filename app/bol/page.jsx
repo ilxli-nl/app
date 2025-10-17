@@ -12,6 +12,7 @@ import {
   getProductImagesFromProductImage,
   syncSpecificOrders
 } from '../actions/orderActions';
+import Image from 'next/image';
 
 export default function BolSyncPage() {
   const [result, setResult] = useState('');
@@ -230,9 +231,11 @@ export default function BolSyncPage() {
                         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleRowClick(order.orderItemId)}>
                           <div className="flex-shrink-0">
                             {productImage ? (
-                              <img 
+                              <Image
                                 src={productImage} 
                                 alt={order.title}
+                                width={50}
+            height={50}
                                 className="w-10 h-10 object-cover rounded border"
                                 onError={(e) => {
                                   e.target.style.display = 'none';
