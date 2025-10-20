@@ -79,10 +79,16 @@ export default function BolSyncClient() {
   };
 
   const handleRowClick = (orderItemId) => {
+    console.log('Clicked order item ID:', orderItemId);
+    console.log('All orders:', orders);
+    const selectedOrderData = orders.find(
+      (order) => order.orderItemId === orderItemId
+    );
+    console.log('Selected order data:', selectedOrderData);
+
     setSelectedOrder(orderItemId);
     setShowModal(true);
   };
-
   const closeModal = () => {
     setShowModal(false);
     setSelectedOrder(null);

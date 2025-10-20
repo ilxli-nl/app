@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { getOrderWithLabel } from '../actions/orderActions';
+import Image from 'next/image';
 
 export default function LabelDetails({ orderItemId, allOrders, getProductImage }) {
   const [orderData, setOrderData] = useState(null);
@@ -11,20 +12,27 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
 
   useEffect(() => {
     const fetchOrderData = async () => {
-      if (!orderItemId) return;
+      if (!orderItemId) {
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
+        setError('');
+        console.log('Fetching data for orderItemId:', orderItemId);
+        
         const result = await getOrderWithLabel(orderItemId);
+        console.log('Fetched order data:', result);
         
         if (result.success) {
           setOrderData(result);
         } else {
-          setError(result.error);
+          setError(result.error || 'Failed to fetch order data');
         }
       } catch (err) {
-        setError('Failed to fetch order data');
         console.error('Error fetching order:', err);
+        setError('Failed to fetch order data');
       } finally {
         setLoading(false);
       }
@@ -35,10 +43,15 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
 
   // Get all items for the same order
   const getAllOrderItems = () => {
-    if (!orderData || !allOrders) return [];
+    if (!orderData || !allOrders) {
+      console.log('No orderData or allOrders:', { orderData, allOrders });
+      return [];
+    }
     
     const currentOrderId = orderData.order.orderId;
-    return allOrders.filter(order => order.orderId === currentOrderId);
+    const items = allOrders.filter(order => order.orderId === currentOrderId);
+    console.log('All order items for order', currentOrderId, ':', items);
+    return items;
   };
 
   if (loading) {
@@ -57,6 +70,12 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
     return (
       <div className="p-8 bg-red-50 border border-red-200 rounded-lg">
         <p className="text-red-600">Error: {error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -64,7 +83,8 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
   if (!orderData) {
     return (
       <div className="p-8 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <p className="text-yellow-600">No order data found</p>
+        <p className="text-yellow-600">No order data found for this order item</p>
+        <p className="text-sm text-yellow-500 mt-1">Order Item ID: {orderItemId}</p>
       </div>
     );
   }
@@ -74,6 +94,8 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
   const totalOrderValue = allOrderItems.reduce((total, item) => {
     return total + ((item.quantity || 1) * (item.unitPrice || 0));
   }, 0);
+
+  console.log('Rendering with order:', order, 'label:', label);
 
   return (
     <div className="bg-white">
@@ -103,11 +125,8 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
                           <Image
                             src={productImage} 
                             alt={item.title}
-<<<<<<< HEAD
                             width={64}
                             height={64}
-=======
->>>>>>> parent of da30888 (Image fixed)
                             className="w-16 h-16 object-cover rounded border"
                             onError={(e) => {
                               e.target.style.display = 'none';

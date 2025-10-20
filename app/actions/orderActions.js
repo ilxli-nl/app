@@ -58,6 +58,43 @@ export const Token = async (account) => {
   return tokenData;
 };
 
+export async function getOrderWithLabel(orderItemId) {
+  try {
+    console.log('Fetching order with label for:', orderItemId);
+
+    const order = await prisma.orders.findUnique({
+      where: { orderItemId },
+    });
+
+    if (!order) {
+      console.log('Order not found for orderItemId:', orderItemId);
+      return { success: false, error: 'Order not found' };
+    }
+
+    const label = await prisma.labels.findUnique({
+      where: { orderItemId },
+    });
+
+    console.log(
+      'Found order:',
+      order.orderId,
+      'label:',
+      label ? 'exists' : 'not found'
+    );
+
+    return {
+      success: true,
+      order,
+      label: label || null,
+    };
+  } catch (error) {
+    console.error('Error in getOrderWithLabel:', error);
+    return { success: false, error: error.message };
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 // --- Fetch shipments with better debugging ---
 async function fetchShipments(token, pages = 6) {
   const allShipments = {};
