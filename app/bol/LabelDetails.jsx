@@ -1,3 +1,4 @@
+// components/LabelDetails.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,6 +10,29 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    const fetchOrderData = async () => {
+      if (!orderItemId) return;
+      
+      try {
+        setLoading(true);
+        const result = await getOrderWithLabel(orderItemId);
+        
+        if (result.success) {
+          setOrderData(result);
+        } else {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError('Failed to fetch order data');
+        console.error('Error fetching order:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrderData();
+  }, [orderItemId]);
 
   // Get all items for the same order
   const getAllOrderItems = () => {
@@ -30,7 +54,13 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
     );
   }
 
-
+  if (error) {
+    return (
+      <div className="p-8 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-600">Error: {error}</p>
+      </div>
+    );
+  }
 
   if (!orderData) {
     return (
@@ -64,7 +94,7 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
             
             <div className="space-y-4 max-h-96 overflow-y-auto">
               {allOrderItems.map((item, index) => {
-                const productImage = getProductImage(item);
+                const productImage = getProductImage ? getProductImage(item) : item.img;
                 return (
                   <div key={item.orderItemId} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex space-x-4">
@@ -74,8 +104,8 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
                           <Image
                             src={productImage} 
                             alt={item.title}
-                            width={50}
-            height={50}
+                            width={64}
+                            height={64}
                             className="w-16 h-16 object-cover rounded border"
                             onError={(e) => {
                               e.target.style.display = 'none';
@@ -189,19 +219,19 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
                   <div>
                     <label className="block text-sm font-medium text-gray-500">Label Created</label>
                     <p className="mt-1 text-sm text-gray-900">
-                      {new Date(label.createdAt).toLocaleDateString()}
+                      {label.createdAt ? new Date(label.createdAt).toLocaleDateString() : 'N/A'}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {new Date(label.createdAt).toLocaleTimeString()}
+                      {label.createdAt ? new Date(label.createdAt).toLocaleTimeString() : ''}
                     </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-500">Last Updated</label>
                     <p className="mt-1 text-sm text-gray-900">
-                      {new Date(label.updatedAt).toLocaleDateString()}
+                      {label.updatedAt ? new Date(label.updatedAt).toLocaleDateString() : 'N/A'}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {new Date(label.updatedAt).toLocaleTimeString()}
+                      {label.updatedAt ? new Date(label.updatedAt).toLocaleTimeString() : ''}
                     </p>
                   </div>
                 </div>
