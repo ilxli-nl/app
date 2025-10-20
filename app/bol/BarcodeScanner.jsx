@@ -338,7 +338,7 @@ export default function BarcodeScanner() {
       <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
         <h4 className="font-medium text-yellow-800 mb-2">How to use:</h4>
         <ul className="text-sm text-yellow-700 list-disc list-inside space-y-1">
-          <li>Click "Start Scanning" to activate the scanner</li>
+          <li>Click &quot;Start Scanning&quot; to activate the scanner</li>
           <li>Use your barcode scanner to scan shipping labels</li>
           <li>Scans are automatically registered in the database</li>
           <li>You can also type barcodes manually and press Enter</li>

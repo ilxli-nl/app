@@ -716,7 +716,7 @@ export default function ProductForm() {
             <div className='text-sm text-gray-600 mb-2'>Image Preview:</div>
             <div className='relative inline-block'>
               <div className='relative w-32 h-32 border border-gray-300 rounded-lg overflow-hidden'>
-                <img
+                <Image
                   src={imagePreview}
                   alt='Preview'
                   className='w-full h-full object-cover'

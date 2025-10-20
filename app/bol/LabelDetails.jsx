@@ -9,29 +9,6 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (orderItemId) {
-      fetchOrderDetails();
-    }
-  }, [orderItemId]);
-
-  const fetchOrderDetails = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const result = await getOrderWithLabel(orderItemId);
-      
-      if (result.success) {
-        setOrderData(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch order details');
-      }
-    } catch (err) {
-      setError('Error loading order details: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Get all items for the same order
   const getAllOrderItems = () => {
@@ -53,19 +30,7 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-8 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-600">{error}</p>
-        <button
-          onClick={fetchOrderDetails}
-          className="mt-2 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+
 
   if (!orderData) {
     return (
@@ -106,7 +71,7 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
                       {/* Product Image */}
                       <div className="flex-shrink-0">
                         {productImage ? (
-                          <img 
+                          <Image
                             src={productImage} 
                             alt={item.title}
                             width={50}
@@ -256,7 +221,7 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
             ) : (
               <div className="text-center py-8 bg-yellow-50 rounded-lg border border-yellow-200">
                 <p className="text-yellow-600 font-medium">No shipping label found</p>
-                <p className="text-sm text-yellow-500 mt-1">This order doesn't have a shipping label yet.</p>
+                <p className="text-sm text-yellow-500 mt-1">This order doesn&apos;t have a shipping label yet.</p>
               </div>
             )}
           </div>
@@ -303,12 +268,6 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
           <div className="text-sm text-gray-500">
             Last updated: {new Date().toLocaleString()}
           </div>
-          <button
-            onClick={fetchOrderDetails}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors text-sm"
-          >
-            Refresh Data
-          </button>
         </div>
       </div>
     </div>
