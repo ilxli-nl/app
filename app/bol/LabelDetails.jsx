@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { getOrderWithLabel } from '../actions/orderActions';
-import Image from 'next/image';
 
 export default function LabelDetails({ orderItemId, allOrders, getProductImage }) {
   const [orderData, setOrderData] = useState(null);
@@ -104,8 +103,11 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
                           <Image
                             src={productImage} 
                             alt={item.title}
+<<<<<<< HEAD
                             width={64}
                             height={64}
+=======
+>>>>>>> parent of da30888 (Image fixed)
                             className="w-16 h-16 object-cover rounded border"
                             onError={(e) => {
                               e.target.style.display = 'none';
