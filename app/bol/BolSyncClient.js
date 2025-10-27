@@ -38,32 +38,55 @@ export default function BolSyncClient() {
       const ordersRes = await getOrders(2000);
       const labelsRes = await getLabels();
 
-      if (ordersRes.success) {
-        setOrders(ordersRes.data);
-        console.log('Loaded orders with images:', ordersRes.data.length);
-      }
-      if (labelsRes.success) setLabels(labelsRes.data);
+      // FIX: Add proper error handling for undefined data
+      const ordersData = ordersRes?.success ? ordersRes.data || [] : [];
+      const labelsData = labelsRes?.success ? labelsRes.data || [] : [];
 
-      const eans = [
-        ...new Set(ordersRes.data.map((o) => o.ean).filter(Boolean)),
-      ];
-      if (eans.length) {
-        const imgRes = await getProductImages(eans);
-        if (imgRes.success && imgRes.data.length > 0) {
-          const map = {};
-          imgRes.data.forEach((i) => (map[i.ean] = i.image));
-          setProductImages(map);
-        } else {
-          const prodImgRes = await getProductImagesFromProductImage(eans);
-          if (prodImgRes.success) {
-            const map = {};
-            prodImgRes.data.forEach((i) => (map[i.ean] = i.imageUrl));
-            setProductImages(map);
+      setOrders(ordersData);
+      setLabels(labelsData);
+
+      console.log('Loaded orders:', ordersData.length);
+      console.log('Loaded labels:', labelsData.length);
+
+      // Only proceed with product images if we have orders with EANs
+      if (ordersData.length > 0) {
+        const eans = [...new Set(ordersData.map((o) => o.ean).filter(Boolean))];
+
+        console.log('Unique EANs found:', eans.length);
+
+        if (eans.length > 0) {
+          try {
+            const imgRes = await getProductImages(eans);
+            if (imgRes?.success && imgRes.data && imgRes.data.length > 0) {
+              const map = {};
+              imgRes.data.forEach((i) => (map[i.ean] = i.image));
+              setProductImages(map);
+              console.log(
+                'Loaded product images from getProductImages:',
+                Object.keys(map).length
+              );
+            } else {
+              // Fallback to alternative image source
+              const prodImgRes = await getProductImagesFromProductImage(eans);
+              if (prodImgRes?.success && prodImgRes.data) {
+                const map = {};
+                prodImgRes.data.forEach((i) => (map[i.ean] = i.imageUrl));
+                setProductImages(map);
+                console.log(
+                  'Loaded product images from fallback:',
+                  Object.keys(map).length
+                );
+              }
+            }
+          } catch (imgError) {
+            console.error('Error loading product images:', imgError);
+            // Continue without product images - this is not critical
           }
         }
       }
     } catch (e) {
-      setResult('Error loading data: ' + e.message);
+      console.error('Error in fetchOrdersAndLabels:', e);
+      setResult('Error loading data: ' + (e.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -72,9 +95,13 @@ export default function BolSyncClient() {
   const handleSync = () => {
     startTransition(async () => {
       setResult('Syncing with Bol.com...');
-      const res = await UpdateBolBarcodes(1, 'NL');
-      setResult(res.message);
-      fetchOrdersAndLabels();
+      try {
+        const res = await UpdateBolBarcodes(1, 'NL');
+        setResult(res?.message || 'Sync completed');
+        await fetchOrdersAndLabels();
+      } catch (error) {
+        setResult('Sync failed: ' + (error.message || 'Unknown error'));
+      }
     });
   };
 
@@ -89,6 +116,7 @@ export default function BolSyncClient() {
     setSelectedOrder(orderItemId);
     setShowModal(true);
   };
+
   const closeModal = () => {
     setShowModal(false);
     setSelectedOrder(null);
@@ -100,14 +128,20 @@ export default function BolSyncClient() {
   };
 
   const saveBarcode = async (id) => {
-    const result = await updateBarcode(id, barcodeInput);
-    if (result.success) {
-      await fetchOrdersAndLabels();
-      setResult('Barcode updated successfully');
-      setEditingBarcode(null);
-      setBarcodeInput('');
-    } else {
-      setResult('Error: ' + result.error);
+    try {
+      const result = await updateBarcode(id, barcodeInput);
+      if (result?.success) {
+        await fetchOrdersAndLabels();
+        setResult('Barcode updated successfully');
+        setEditingBarcode(null);
+        setBarcodeInput('');
+      } else {
+        setResult('Error: ' + (result?.error || 'Unknown error'));
+      }
+    } catch (error) {
+      setResult(
+        'Error updating barcode: ' + (error.message || 'Unknown error')
+      );
     }
   };
 
@@ -120,6 +154,7 @@ export default function BolSyncClient() {
     labels.find((l) => l.orderItemId === orderItemId);
 
   const getProductImage = (order) => {
+    if (!order) return null;
     if (order.productImage) return order.productImage;
     if (order.orderImage) return order.orderImage;
     if (order.ean && productImages[order.ean]) return productImages[order.ean];
@@ -127,6 +162,8 @@ export default function BolSyncClient() {
   };
 
   const getRowStyle = (currentOrder, index) => {
+    if (!currentOrder) return {};
+
     const prevOrder = index > 0 ? orders[index - 1] : null;
     const nextOrder = index < orders.length - 1 ? orders[index + 1] : null;
 
@@ -236,178 +273,191 @@ export default function BolSyncClient() {
                 </tr>
               </thead>
               <tbody className='bg-white divide-y divide-gray-200'>
-                {orders.map((order, index) => {
-                  const label = getLabel(order.orderItemId);
-                  const productImage = getProductImage(order);
-                  const rowStyle = getRowStyle(order, index);
+                {orders && orders.length > 0 ? (
+                  orders.map((order, index) => {
+                    if (!order) return null;
 
-                  return (
-                    <tr
-                      key={order.orderItemId}
-                      className='hover:bg-gray-50'
-                      style={rowStyle}
-                    >
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <div
-                          className='flex items-center space-x-3 cursor-pointer'
-                          onClick={() => handleRowClick(order.orderItemId)}
-                        >
-                          <div className='flex-shrink-0'>
-                            {productImage ? (
-                              <Image
-                                src={productImage}
-                                alt={order.title}
-                                width={50}
-                                height={50}
-                                className='w-10 h-10 object-cover rounded border'
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                            ) : null}
-                            <div
-                              className={`w-10 h-10 bg-gray-200 rounded border flex items-center justify-center ${
-                                productImage ? 'hidden' : 'flex'
-                              }`}
-                            >
-                              <span className='text-xs text-gray-500'>
-                                No Image
-                              </span>
+                    const label = getLabel(order.orderItemId);
+                    const productImage = getProductImage(order);
+                    const rowStyle = getRowStyle(order, index);
+
+                    return (
+                      <tr
+                        key={order.orderItemId}
+                        className='hover:bg-gray-50'
+                        style={rowStyle}
+                      >
+                        <td className='px-6 py-4 whitespace-nowrap'>
+                          <div
+                            className='flex items-center space-x-3 cursor-pointer'
+                            onClick={() => handleRowClick(order.orderItemId)}
+                          >
+                            <div className='flex-shrink-0'>
+                              {productImage ? (
+                                <Image
+                                  src={productImage}
+                                  alt={order.title || 'Product image'}
+                                  width={50}
+                                  height={50}
+                                  className='w-10 h-10 object-cover rounded border'
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              ) : null}
+                              <div
+                                className={`w-10 h-10 bg-gray-200 rounded border flex items-center justify-center ${
+                                  productImage ? 'hidden' : 'flex'
+                                }`}
+                              >
+                                <span className='text-xs text-gray-500'>
+                                  No Image
+                                </span>
+                              </div>
+                            </div>
+                            <div className='text-sm font-medium text-gray-900'>
+                              {order.orderId || 'N/A'}
                             </div>
                           </div>
-                          <div className='text-sm font-medium text-gray-900'>
-                            {order.orderId}
-                          </div>
-                        </div>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap'>
-                        <div className='flex items-center justify-between'>
-                          <div className='text-sm text-gray-500'>
-                            <div className=''>
-                              <h2>
-                                <strong>
-                                  {order.s_firstName} {order.s_surname}
-                                </strong>
-                              </h2>
-                              {order.s_streetName} {order.s_houseNumber}
-                              {order.s_houseNumberExtension &&
-                                ` ${order.s_houseNumberExtension}`}
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap'>
+                          <div className='flex items-center justify-between'>
+                            <div className='text-sm text-gray-500'>
+                              <div className=''>
+                                <h2>
+                                  <strong>
+                                    {order.s_firstName || ''}{' '}
+                                    {order.s_surname || ''}
+                                  </strong>
+                                </h2>
+                                {order.s_streetName} {order.s_houseNumber}
+                                {order.s_houseNumberExtension &&
+                                  ` ${order.s_houseNumberExtension}`}
+                              </div>
+                              <div>
+                                {order.s_zipCode} {order.s_city}
+                              </div>
                             </div>
+                            <div className='flex items-center justify-center min-w-[80px]'>
+                              <div
+                                className={`text-4xl mr-5 font-bold rounded-lg px-3 py-2 text-center ${
+                                  order.s_countryCode === 'NL'
+                                    ? 'text-orange-600 bg-orange-100'
+                                    : order.s_countryCode === 'BE'
+                                    ? 'text-green-600 bg-green-100'
+                                    : 'text-gray-600 bg-gray-100'
+                                }`}
+                              >
+                                {order.s_countryCode || '??'}
+                              </div>
+                              <div
+                                className={`text-4xl font-bold rounded-lg px-3 py-2 text-center ${
+                                  order.s_countryCode === 'NL'
+                                    ? 'text-orange-600 bg-orange-100'
+                                    : order.s_countryCode === 'BE'
+                                    ? 'text-green-600 bg-green-100'
+                                    : 'text-gray-600 bg-gray-100'
+                                }`}
+                              >
+                                {order.quantity || 0}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className='px-6 py-4 text-sm text-gray-500'>
+                          <div
+                            className='max-w-xs truncate'
+                            title={order.title}
+                          >
+                            {order.title || 'No title'}
+                          </div>
+                          <div className='text-xs text-gray-400 mt-1'>
                             <div>
-                              {order.s_zipCode} {order.s_city}
+                              Qty: {order.quantity || 0} × €
+                              {order.unitPrice?.toFixed(2) || '0.00'}
                             </div>
+                            {order.ean && <div>EAN: {order.ean}</div>}
                           </div>
-                          <div className='flex items-center justify-center min-w-[80px]'>
-                            <div
-                              className={`text-4xl mr-5 font-bold rounded-lg px-3 py-2 text-center ${
-                                order.s_countryCode === 'NL'
-                                  ? 'text-orange-600 bg-orange-100'
-                                  : order.s_countryCode === 'BE'
-                                  ? 'text-green-600 bg-green-100'
-                                  : 'text-gray-600 bg-gray-100'
-                              }`}
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
+                          {editingBarcode === order.orderItemId ? (
+                            <div className='flex items-center space-x-2'>
+                              <input
+                                type='text'
+                                value={barcodeInput}
+                                onChange={(e) =>
+                                  setBarcodeInput(e.target.value)
+                                }
+                                className='border border-gray-300 rounded px-2 py-1 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                placeholder='Enter barcode'
+                                autoFocus
+                              />
+                            </div>
+                          ) : (
+                            <span
+                              className={
+                                label?.Barcode
+                                  ? 'text-green-600 font-medium'
+                                  : 'text-gray-400'
+                              }
                             >
-                              {order.s_countryCode}
+                              {label?.Barcode || 'No Barcode'}
+                            </span>
+                          )}
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap text-sm font-medium'>
+                          {editingBarcode === order.orderItemId ? (
+                            <div className='flex space-x-2'>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  saveBarcode(order.orderItemId);
+                                }}
+                                className='text-green-600 hover:text-green-900 font-medium'
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  cancelEdit();
+                                }}
+                                className='text-gray-600 hover:text-gray-900'
+                              >
+                                Cancel
+                              </button>
                             </div>
-                            <div
-                              className={`text-4xl font-bold rounded-lg px-3 py-2 text-center ${
-                                order.s_countryCode === 'NL'
-                                  ? 'text-orange-600 bg-orange-100'
-                                  : order.s_countryCode === 'BE'
-                                  ? 'text-green-600 bg-green-100'
-                                  : 'text-gray-600 bg-gray-100'
-                              }`}
-                            >
-                              {order.quantity}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className='px-6 py-4 text-sm text-gray-500'>
-                        <div className='max-w-xs truncate' title={order.title}>
-                          {order.title}
-                        </div>
-                        <div className='text-xs text-gray-400 mt-1'>
-                          <div>
-                            Qty: {order.quantity} × €
-                            {order.unitPrice?.toFixed(2)}
-                          </div>
-                          {order.ean && <div>EAN: {order.ean}</div>}
-                        </div>
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
-                        {editingBarcode === order.orderItemId ? (
-                          <div className='flex items-center space-x-2'>
-                            <input
-                              type='text'
-                              value={barcodeInput}
-                              onChange={(e) => setBarcodeInput(e.target.value)}
-                              className='border border-gray-300 rounded px-2 py-1 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                              placeholder='Enter barcode'
-                              autoFocus
-                            />
-                          </div>
-                        ) : (
-                          <span
-                            className={
-                              label?.Barcode
-                                ? 'text-green-600 font-medium'
-                                : 'text-gray-400'
-                            }
-                          >
-                            {label?.Barcode || 'No Barcode'}
-                          </span>
-                        )}
-                      </td>
-                      <td className='px-6 py-4 whitespace-nowrap text-sm font-medium'>
-                        {editingBarcode === order.orderItemId ? (
-                          <div className='flex space-x-2'>
+                          ) : (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                saveBarcode(order.orderItemId);
+                                startEdit(
+                                  order.orderItemId,
+                                  label?.Barcode || ''
+                                );
                               }}
-                              className='text-green-600 hover:text-green-900 font-medium'
+                              className='text-blue-600 hover:text-blue-900 font-medium'
                             >
-                              Save
+                              {label?.Barcode ? 'Edit' : 'Add'} Barcode
                             </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                cancelEdit();
-                              }}
-                              className='text-gray-600 hover:text-gray-900'
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEdit(
-                                order.orderItemId,
-                                label?.Barcode || ''
-                              );
-                            }}
-                            className='text-blue-600 hover:text-blue-900 font-medium'
-                          >
-                            {label?.Barcode ? 'Edit' : 'Add'} Barcode
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan='5'
+                      className='px-6 py-4 text-center text-gray-500'
+                    >
+                      No orders found
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-
-          {orders.length === 0 && (
-            <div className='text-center py-8 text-gray-500'>
-              No orders found
-            </div>
-          )}
         </div>
       ) : (
         // Barcode Scanner
