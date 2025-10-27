@@ -2,5 +2,5 @@
 import { login } from '@/lib/actions/auth'
 
 export const SignInButton = () => {
-  return <button onClick={() => login()}> Sign In With Github</button>
+  return <button onClick={() => login()}>Please Sign In</button>
 }
