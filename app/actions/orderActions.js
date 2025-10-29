@@ -469,6 +469,7 @@ export async function getOrders(limit = 2000) {
       select: {
         orderId: true,
         orderItemId: true,
+        account: true,
         s_firstName: true,
         s_surname: true,
         s_streetName: true,

@@ -6,7 +6,7 @@ import { prisma } from '../prisma.js';
 import { ComboOrders } from '../app/actions/actions.js';
 
 // CONFIGURATION
-const ACCOUNTS = ['NL', 'BE', 'NE_NEW'];
+const ACCOUNTS = ['NL', 'BE', 'NL_NEW'];
 const MAX_PAGES = 3;
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 1000; // 1 second

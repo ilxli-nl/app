@@ -11,7 +11,6 @@ import {
   updateBarcode,
   getProductImages,
   getProductImagesFromProductImage,
-  syncSpecificOrders,
 } from '../actions/orderActions';
 import Image from 'next/image';
 
@@ -341,20 +340,20 @@ export default function BolSyncClient() {
                             <div className='flex items-center justify-center min-w-[80px]'>
                               <div
                                 className={`text-4xl mr-5 font-bold rounded-lg px-3 py-2 text-center ${
-                                  order.s_countryCode === 'NL'
+                                  order.account === 'NL'
                                     ? 'text-orange-600 bg-orange-100'
-                                    : order.s_countryCode === 'BE'
+                                    : order.account === 'BE'
                                     ? 'text-green-600 bg-green-100'
                                     : 'text-gray-600 bg-gray-100'
                                 }`}
                               >
-                                {order.s_countryCode || '??'}
+                                {order.account || '??'}
                               </div>
                               <div
                                 className={`text-4xl font-bold rounded-lg px-3 py-2 text-center ${
-                                  order.s_countryCode === 'NL'
+                                  order.account === 'NL'
                                     ? 'text-orange-600 bg-orange-100'
-                                    : order.s_countryCode === 'BE'
+                                    : order.account === 'BE'
                                     ? 'text-green-600 bg-green-100'
                                     : 'text-gray-600 bg-gray-100'
                                 }`}
