@@ -4,41 +4,35 @@
 import { useState, useEffect } from 'react';
 import { getOrderWithLabel } from '../actions/orderActions';
 import Image from 'next/image';
+import BpostShipment from '@/components/BpostShipment';
 
 export default function LabelDetails({ orderItemId, allOrders, getProductImage }) {
   const [orderData, setOrderData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchOrderData = async () => {
-      if (!orderItemId) {
-        setLoading(false);
-        return;
-      }
+  const refreshOrderData = async () => {
+    if (!orderItemId) return;
+    
+    try {
+      setLoading(true);
+      const result = await getOrderWithLabel(orderItemId);
       
-      try {
-        setLoading(true);
-        setError('');
-        console.log('Fetching data for orderItemId:', orderItemId);
-        
-        const result = await getOrderWithLabel(orderItemId);
-        console.log('Fetched order data:', result);
-        
-        if (result.success) {
-          setOrderData(result);
-        } else {
-          setError(result.error || 'Failed to fetch order data');
-        }
-      } catch (err) {
-        console.error('Error fetching order:', err);
-        setError('Failed to fetch order data');
-      } finally {
-        setLoading(false);
+      if (result.success) {
+        setOrderData(result);
+      } else {
+        setError(result.error || 'Failed to fetch order data');
       }
-    };
+    } catch (err) {
+      console.error('Error refreshing order:', err);
+      setError('Failed to refresh order data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchOrderData();
+  useEffect(() => {
+    refreshOrderData();
   }, [orderItemId]);
 
   // Get all items for the same order
@@ -94,8 +88,6 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
   const totalOrderValue = allOrderItems.reduce((total, item) => {
     return total + ((item.quantity || 1) * (item.unitPrice || 0));
   }, 0);
-
-  console.log('Rendering with order:', order, 'label:', label);
 
   return (
     <div className="bg-white">
@@ -224,6 +216,12 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
 
         {/* Label Information */}
         <div className="space-y-6">
+          {/* Add BpostShipment component here */}
+          <BpostShipment 
+            order={order} 
+            onLabelCreated={refreshOrderData}
+          />
+
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">Shipping Label Information</h3>
             
@@ -272,7 +270,12 @@ export default function LabelDetails({ orderItemId, allOrders, getProductImage }
             ) : (
               <div className="text-center py-8 bg-yellow-50 rounded-lg border border-yellow-200">
                 <p className="text-yellow-600 font-medium">No shipping label found</p>
-                <p className="text-sm text-yellow-500 mt-1">This order doesn&apos;t have a shipping label yet.</p>
+                <p className="text-sm text-yellow-500 mt-1">
+                  {order.s_countryCode === 'BE' 
+                    ? 'Use the Bpost shipment tool above to create a label' 
+                    : 'This order doesn\'t have a shipping label yet.'
+                  }
+                </p>
               </div>
             )}
           </div>
